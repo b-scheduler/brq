@@ -39,14 +39,3 @@ twine upload dist/*
 Configure the following secrets in the [GitHub repository](https://github.com/wh1isper/brq/settings/secrets/actions/new):
 
 - `PYPI_API_TOKEN`: PyPI API token
-
-### Docker iamges
-
-Configure the following secrets in the [GitHub repository](https://github.com/wh1isper/brq/settings/secrets/actions/new):
-
-- `DOCKERHUB_USERNAME`: DockerHub username
-- `DOCKERHUB_TOKEN`: DockerHub token
-
-### Release
-
-Create a new release in GitHub. Everything will be automatically published to PyPI and DockerHub.

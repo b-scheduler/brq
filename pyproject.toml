@@ -1,27 +1,22 @@
 [build-system]
-requires = ["hatchling", ]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "brq"
 description = "brq"
 keywords = ["brq"]
-requires-python = ">=3.8"
-dependencies = [
-]
-dynamic = ["version", ]
+requires-python = ">=3.10"
+dependencies = ["pydantic", "redis>=5.0"]
+dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
 ]
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-]
+test = ["pytest", "pytest-asyncio", "docker"]
 docs = ["Sphinx", "pydata-sphinx-theme", "sphinx-click", "autodoc_pydantic"]
 
 [[project.authors]]
@@ -39,7 +34,7 @@ text = "BSD 3-Clause License"
 Source = "https://github.com/wh1isper/brq"
 
 [tool.check-manifest]
-ignore = [".*", ]
+ignore = [".*"]
 
 [tool.hatch.version]
 path = "brq/__init__.py"
