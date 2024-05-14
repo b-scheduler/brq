@@ -4,6 +4,9 @@ import time
 import docker
 import pytest
 import redis
+import redis.asyncio
+
+from brq.tools import get_redis_url
 
 
 def get_port():
@@ -43,7 +46,6 @@ def redis_port(docker_client):
                 # Ping redis
                 redis_client = redis.Redis(host="localhost", port=redis_port)
                 redis_client.ping()
-                redis_client.flushall()
             except:
                 time.sleep(0.5)
             else:
@@ -52,3 +54,14 @@ def redis_port(docker_client):
     finally:
         if container:
             container.stop()
+
+
+@pytest.fixture
+async def async_redis_client(redis_port):
+    redis_url = get_redis_url(port=redis_port)
+    redis_client = redis.asyncio.from_url(redis_url, decode_responses=True)
+    try:
+        await redis_client.flushall()
+        yield redis_client
+    finally:
+        await redis_client.aclose()
