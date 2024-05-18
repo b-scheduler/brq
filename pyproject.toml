@@ -7,7 +7,7 @@ name = "brq"
 description = "brq"
 keywords = ["brq"]
 requires-python = ">=3.10"
-dependencies = ["pydantic", "redis>=5.0"]
+dependencies = ["pydantic", "redis>=5.0", "loguru"]
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
