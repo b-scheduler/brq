@@ -192,6 +192,9 @@ class Consumer(DeferOperator, RunnableMixin):
                 break
 
             for message_id, serialized_job in expired_messages:
+                if message_id == serialized_job == None:
+                    # Fix (None, None) for redis 6.x
+                    continue
                 job = Job.from_message(serialized_job)
                 await self.redis.zadd(self.dead_key, {job.to_redis(): job.create_at})
                 logger.info(f"Put expired job {job} to dead queue")
