@@ -1,11 +1,14 @@
 import socket
 import time
+from functools import partial
 
 import docker
 import pytest
 import redis
 import redis.asyncio
 
+from brq.consumer import Consumer
+from brq.producer import Producer
 from brq.tools import get_redis_url
 
 
@@ -65,3 +68,13 @@ async def async_redis_client(redis_port):
         yield redis_client
     finally:
         await redis_client.aclose()
+
+
+@pytest.fixture
+def stream_name():
+    return "test_stream"
+
+
+@pytest.fixture
+def group_name():
+    return "test_group"

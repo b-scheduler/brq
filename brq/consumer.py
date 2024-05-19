@@ -25,7 +25,7 @@ class RunnableMixin:
         self._task = asyncio.create_task(self._start())
 
     async def _start(self):
-        await self.initlize()
+        await self.initialize()
         while not await event_wait(self._stop_event, 0.1):
             if self._stop_event.is_set():
                 break
@@ -39,10 +39,10 @@ class RunnableMixin:
     async def stop(self):
         self._stop_event.set()
         if self._task:
-            logger.info("Waiting for consumer to stop...")
+            logger.info("Waiting for consumer finish...")
             await self._task
 
-    async def initlize(self):
+    async def initialize(self):
         """
         Initialize, implement in subclass
         """
@@ -81,6 +81,8 @@ class Consumer(DeferOperator, RunnableMixin):
         run_parallel: bool = False,
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
+        self._stop_event = asyncio.Event()
+        self._task: None | asyncio.Task = None
 
         self.awaitable_function = awaitable_function
         self.register_function_name = register_function_name or awaitable_function.__name__
@@ -140,22 +142,19 @@ class Consumer(DeferOperator, RunnableMixin):
         while True:
             if self._stop_event.is_set():
                 break
-
+            current_timestamp_ms = await self.get_current_timestamp_ms(self.redis)
             message_id = "0-0"
-            expired_messages = await self.redis.xautoclaim(
-                self.stream_name,
-                self.group_name,
-                self.consumer_name,
-                min_idle_time=self.expire_time * 1000,
-                start_id=message_id,
-                count=1000,
+            expired_messages = await self.redis.xrange(
+                self.dead_key,
+                message_id,
+                current_timestamp_ms - self.expire_time * 1000,
+                count=100,
             )
-
             if not expired_messages:
                 break
 
             async def _move_warp(message_id, serialized_job):
-                job = Job.from_redis(serialized_job)
+                job = Job.from_message(serialized_job)
                 await self.redis.zadd(self.dead_key, job.create_at, job.to_redis())
                 await self.redis.xdel(self.stream_name, message_id)
 
@@ -178,7 +177,7 @@ class Consumer(DeferOperator, RunnableMixin):
                 await self.redis.xautoclaim(
                     self.stream_name,
                     self.group_name,
-                    self.consumer_name,
+                    self.consumer_identifier,
                     min_idle_time=self.process_timeout * 1000,
                     start_id=message_id,
                     count=10,
@@ -195,46 +194,54 @@ class Consumer(DeferOperator, RunnableMixin):
                     logger.exception(e)
 
                 logger.info(f"Retry {job} successfully")
-                await self.redis.xack(self.stream_name, self.group_name, job.job_id)
+                await self.redis.xack(self.stream_name, self.group_name, message_id)
 
                 if self.delete_messgae_after_process:
                     await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job(self):
-        _, messages = await self.redis.xreadgroup(
+        poll_result = await self.redis.xreadgroup(
             groupname=self.group_name,
             consumername=self.consumer_identifier,
             streams={self.stream_name: ">"},
             count=self.count_per_fetch,
             block=self.block_time,
-        )[0]
+        )
+        if not poll_result:
+            return
+
+        _, messages = poll_result[0]
         for message_id, serialized_job in messages:
-            job = Job.from_redis(serialized_job)
+            job = Job.from_message(serialized_job)
             try:
                 await self.awaitable_function(*job.args, **job.kwargs)
             except Exception as e:
                 logger.exception(e)
 
-            await self.redis.xack(self.stream_name, self.group_name, job.job_id)
+            await self.redis.xack(self.stream_name, self.group_name, message_id)
 
             if self.delete_messgae_after_process:
                 await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job_prallel(self):
-        _, messages = await self.redis.xreadgroup(
+        pool_result = await self.redis.xreadgroup(
             groupname=self.group_name,
             consumername=self.consumer_identifier,
             streams={self.stream_name: ">"},
             count=self.count_per_fetch,
             block=self.block_time,
-        )[0]
+        )
+        if not pool_result:
+            return
+        _, messages = pool_result[0]
 
         async def _job_wrap(message_id, *args, **kwargs):
             await self.awaitable_function(*args, **kwargs)
             return message_id
 
         jobs = {
-            messages_id: Job.from_redis(serialized_job) for messages_id, serialized_job in messages
+            messages_id: Job.from_message(serialized_job)
+            for messages_id, serialized_job in messages
         }
         results = await asyncio.gather(
             *[_job_wrap(message_id, *job.args, **job.kwargs) for message_id, job in jobs.items()],
@@ -251,10 +258,12 @@ class Consumer(DeferOperator, RunnableMixin):
                 await self.redis.xdel(self.stream_name, message_id)
 
     async def _acquire_retry_lock(self) -> bool:
-        return await self.redis.get(self.reprocess_key) == self.job_id or await self.redis.set(
-            self.reprocess_key,
-            self.job_id,
-            ex=self.process_unacked_events_timeout,
+        return await self.redis.get(
+            self.retry_lock_key
+        ) == self.consumer_identifier or await self.redis.set(
+            self.retry_lock_key,
+            self.consumer_identifier,
+            ex=self.retry_lock_time,
             nx=True,
         )
 
@@ -268,11 +277,11 @@ class Consumer(DeferOperator, RunnableMixin):
         """
 
         deleted = bool(
-            await self.redis.eval(lua_script, 1, self.reprocess_key, self.consumer_identifier)
+            await self.redis.eval(lua_script, 1, self.retry_lock_key, self.consumer_identifier)
         )
         return deleted
 
-    async def initlize(self):
+    async def initialize(self):
         try:
             logger.info(
                 f"Creating consumer group: {self.group_name} for stream: {self.stream_name}"
@@ -289,6 +298,8 @@ class Consumer(DeferOperator, RunnableMixin):
         await self._consume()
 
     async def cleanup(self):
-        await self.redis.xgroup_delconsumer(self.stream_name, self.group_name, self.consumer_name)
+        await self.redis.xgroup_delconsumer(
+            self.stream_name, self.group_name, self.consumer_identifier
+        )
         if await self._release_retry_lock():
-            logger.info(f"Stop reprocessing unprocessed events: {self.job_id}")
+            logger.info(f"Stop reprocessing unprocessed events: {self.consumer_identifier}")

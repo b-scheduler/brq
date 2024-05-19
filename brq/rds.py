@@ -17,7 +17,7 @@ class RedisOperator:
         self.redis_seperator = redis_seperator
 
     def get_redis_key(self, *key: list[str]) -> str:
-        return self.redis_seperator.join(self.redis_prefix + list(key))
+        return self.redis_seperator.join([self.redis_prefix] + list(key))
 
     def get_stream_name(self, function_name: str) -> str:
         return self.get_redis_key(function_name, "stream")

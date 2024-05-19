@@ -28,7 +28,7 @@ class DeferOperator(RedisOperator):
 
         for i, element in ipairs(elements) do
             redis.call('ZREM', zset_key, element)
-            redis.call('XADD', stream_key, 'MAXLEN', maxlen, '*', 'data', element)
+            redis.call('XADD', stream_key, 'MAXLEN', maxlen, '*', 'payload', element)
         end
 
         return elements
@@ -44,4 +44,5 @@ class DeferOperator(RedisOperator):
             await self.get_current_timestamp(self.redis),
             maxlen,
         )
-        logger.info(f"Enqueued deferred jobs: {elements}")
+        if elements:
+            logger.info(f"Enqueued deferred jobs: {elements}")

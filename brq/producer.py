@@ -83,7 +83,7 @@ class Producer(DeferOperator):
             kwargs=kwargs or {},
             create_at=created_at,
         )
-        await self.redis.xadd(stream_name, job.to_redis(), maxlen=self.max_message_size)
+        await self.redis.xadd(stream_name, job.to_message(), maxlen=self.max_message_size)
         return job
 
     async def prune(self, function_name: str):

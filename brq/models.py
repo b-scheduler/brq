@@ -10,10 +10,20 @@ class Job(BaseModel):
     args: list
     kwargs: dict
     create_at: int
+    """
+    Timestamp in seconds
+    """
 
     @classmethod
     def from_redis(cls, serialized: str) -> Job:
         return cls.model_validate_json(serialized)
 
+    @classmethod
+    def from_message(cls, message: dict) -> Job:
+        return cls.model_validate_json(message["payload"])
+
     def to_redis(self) -> str:
         return json.dumps(self.model_dump(), sort_keys=True)
+
+    def to_message(self) -> dict:
+        return {"payload": self.to_redis()}
