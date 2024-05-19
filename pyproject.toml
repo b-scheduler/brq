@@ -13,10 +13,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-asyncio", "docker"]
+test = ["pytest", "docker", "pytest-asyncio", "pytest-cov"]
 docs = ["Sphinx", "pydata-sphinx-theme", "sphinx-click", "autodoc_pydantic"]
 
 [[project.authors]]

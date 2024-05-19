@@ -135,37 +135,41 @@ class Consumer(DeferOperator, RunnableMixin):
         else:
             await self._pool_job()
 
-    async def process_dead_jobs(self):
-        pass
+    async def process_dead_jobs(self, raise_exception: bool = False):
+        for job in (Job.from_redis(j) for j in await self.redis.zrange(self.dead_key, 0, -1)):
+            try:
+                await self.awaitable_function(*job.args, **job.kwargs)
+            except Exception as e:
+                logger.exception(e)
+                if raise_exception:
+                    raise e
+            else:
+                await self.redis.zrem(self.dead_key, job.to_redis())
 
     async def _move_expired_jobs(self):
         while True:
             if self._stop_event.is_set():
                 break
-            current_timestamp_ms = await self.get_current_timestamp_ms(self.redis)
+
             message_id = "0-0"
-            expired_messages = await self.redis.xrange(
-                self.dead_key,
-                message_id,
-                current_timestamp_ms - self.expire_time * 1000,
-                count=100,
-            )
+            expired_messages = (
+                await self.redis.xautoclaim(
+                    self.stream_name,
+                    self.group_name,
+                    self.consumer_identifier,
+                    min_idle_time=int(self.expire_time * 1000),
+                    start_id=message_id,
+                    count=100,
+                )
+            )[1]
             if not expired_messages:
                 break
 
-            async def _move_warp(message_id, serialized_job):
+            for message_id, serialized_job in expired_messages:
                 job = Job.from_message(serialized_job)
-                await self.redis.zadd(self.dead_key, job.create_at, job.to_redis())
+                await self.redis.zadd(self.dead_key, {job.to_redis(): job.create_at})
+                logger.info(f"Put expired job {job} to dead queue")
                 await self.redis.xdel(self.stream_name, message_id)
-
-            await asyncio.gather(
-                *[
-                    _move_warp(message_id, serialized_job)
-                    for message_id, serialized_job in expired_messages
-                ]
-            )
-
-            logger.info(f"Moved {len(expired_messages)} jobs to dead message")
 
     async def _process_unacked_job(self):
         while True:
@@ -178,7 +182,7 @@ class Consumer(DeferOperator, RunnableMixin):
                     self.stream_name,
                     self.group_name,
                     self.consumer_identifier,
-                    min_idle_time=self.process_timeout * 1000,
+                    min_idle_time=int(self.process_timeout * 1000),
                     start_id=message_id,
                     count=10,
                 )
@@ -187,17 +191,17 @@ class Consumer(DeferOperator, RunnableMixin):
                 break
 
             for message_id, serialized_job in claimed_messages:
-                job = Job.from_redis(serialized_job)
+                job = Job.from_message(serialized_job)
                 try:
                     await self.awaitable_function(*job.args, **job.kwargs)
                 except Exception as e:
                     logger.exception(e)
+                else:
+                    logger.info(f"Retry {job} successfully")
+                    await self.redis.xack(self.stream_name, self.group_name, message_id)
 
-                logger.info(f"Retry {job} successfully")
-                await self.redis.xack(self.stream_name, self.group_name, message_id)
-
-                if self.delete_messgae_after_process:
-                    await self.redis.xdel(self.stream_name, message_id)
+                    if self.delete_messgae_after_process:
+                        await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job(self):
         poll_result = await self.redis.xreadgroup(
@@ -217,11 +221,11 @@ class Consumer(DeferOperator, RunnableMixin):
                 await self.awaitable_function(*job.args, **job.kwargs)
             except Exception as e:
                 logger.exception(e)
+            else:
+                await self.redis.xack(self.stream_name, self.group_name, message_id)
 
-            await self.redis.xack(self.stream_name, self.group_name, message_id)
-
-            if self.delete_messgae_after_process:
-                await self.redis.xdel(self.stream_name, message_id)
+                if self.delete_messgae_after_process:
+                    await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job_prallel(self):
         pool_result = await self.redis.xreadgroup(

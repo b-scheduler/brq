@@ -27,4 +27,4 @@ jobs:
                   python -m pip install -e .[test]
             - name: Test with pytest
               run: |
-                  pytest -vv
+                  pytest -vv --cov-config=.coveragerc --cov-report term-missing --cov=brq/ tests

@@ -41,7 +41,7 @@ class Producer(DeferOperator):
             logger.info(
                 f"Deferring job: {function_name} until {defer_until} (defer_hours: {defer_hours}, defer_minutes: {defer_minutes}, defer_seconds: {defer_seconds})"
             )
-            job = await self.emit_deferred_job(
+            job = await self._emit_deferred_job(
                 function_name,
                 defer_until,
                 args,
@@ -49,12 +49,12 @@ class Producer(DeferOperator):
             )
         else:
             logger.info(f"Scheduling job: {function_name}")
-            job = await self.emit_job(function_name, args, kwargs)
+            job = await self._emit_job(function_name, args, kwargs)
 
         logger.info(f"Job created: {job}")
         return job
 
-    async def emit_deferred_job(
+    async def _emit_deferred_job(
         self,
         function_name: str,
         defer_until: int,
@@ -69,10 +69,10 @@ class Producer(DeferOperator):
             kwargs=kwargs or {},
             create_at=created_at,
         )
-        await self.redis.zadd(defer_key, defer_until, job.to_redis())
+        await self.redis.zadd(defer_key, {job.to_redis(): defer_until})
         return job
 
-    async def emit_job(
+    async def _emit_job(
         self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
     ) -> Job:
         stream_name = self.get_stream_name(function_name)
@@ -108,6 +108,16 @@ class Producer(DeferOperator):
         defer_minutes: int = 0,
         defer_seconds: int = 0,
     ):
+        if not any(
+            [
+                defer_until,
+                defer_hours,
+                defer_minutes,
+                defer_seconds,
+            ]
+        ):
+            return None
+
         if defer_until:
             logger.debug(f"Using defer_until, ignore defer_hours, defer_minutes, defer_seconds")
             defer_until = defer_until.timestamp()
