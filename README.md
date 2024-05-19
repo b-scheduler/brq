@@ -30,7 +30,7 @@ Redis >= 6.2, tested with latest docker image
 - Dead queue
 - Multiple consumers
 
-## Echo jobs overview
+## Echo job overview
 
 ### Producer
 
