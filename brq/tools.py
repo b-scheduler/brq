@@ -9,10 +9,20 @@ import redis.asyncio as redis
 from brq.log import logger
 
 
-async def get_current_timestamp_ms_from_redis(
+async def get_current_timestamp(
+    redis_client: redis.Redis | redis.RedisCluster,
+) -> int:
+    return int((await redis_client.time())[0])
+
+
+async def get_current_timestamp_ms(
     redis_client: redis.Redis | redis.RedisCluster,
 ) -> int:
     return int((await redis_client.time())[0] * 1000 + (await redis_client.time())[1] / 1000)
+
+
+def timestamp_to_datetime(timestamp: int, tz=None) -> datetime:
+    return datetime.fromtimestamp(timestamp, tz=tz)
 
 
 def timestamp_ms_to_datetime(timestamp_ms: int) -> datetime:

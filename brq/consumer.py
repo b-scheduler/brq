@@ -5,8 +5,8 @@ from typing import Any, Awaitable, Callable
 
 import redis.asyncio as redis
 
+from brq.defer_operator import DeferOperator
 from brq.log import logger
-from brq.rds import RedisOperator
 from brq.tools import event_wait
 
 CONSUMER_IDENTIFIER_ENV = "BRQ_CONSUMER_IDENTIFIER"
@@ -57,7 +57,7 @@ class RunnableMixin:
         """
 
 
-class Consumer(RedisOperator, RunnableMixin):
+class Consumer(DeferOperator, RunnableMixin):
     def __init__(
         self,
         redis: redis.Redis | redis.RedisCluster,
@@ -76,9 +76,8 @@ class Consumer(RedisOperator, RunnableMixin):
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
     ):
-        super().__init__(redis_prefix, redis_seperator)
+        super().__init__(redis, redis_prefix, redis_seperator)
 
-        self.redis = redis
         self.awaitable_function = awaitable_function
         self.register_function_name = register_function_name or awaitable_function.__name__
         self.group_name = group_name
@@ -110,17 +109,39 @@ class Consumer(RedisOperator, RunnableMixin):
     def deferred_key(self) -> str:
         return self.get_deferred_key(self.register_function_name)
 
-    async def _enque_deferred_job(self):
-        pass
-
     async def _consume(self):
+        try:
+            if await self._acquire_retry_lock():
+                await self._process_unacked_job()
+        finally:
+            await self._release_retry_lock()
+        await self._pool_job()
+
+    async def _process_unacked_job(self):
         pass
 
-    async def acquire_retry_lock(self):
+    async def _pool_job(self):
         pass
 
-    async def _release_retry_lock(self):
-        pass
+    async def _acquire_retry_lock(self) -> bool:
+        return await self.redis.get(self.reprocess_key) == self.job_id or await self.redis.set(
+            self.reprocess_key,
+            self.job_id,
+            ex=self.process_unacked_events_timeout,
+            nx=True,
+        )
+
+    async def _release_retry_lock(self) -> bool:
+        lua_script = """
+            if redis.call("get", KEYS[1]) == ARGV[1] then
+                return redis.call("del", KEYS[1])
+            else
+                return 0
+            end
+        """
+
+        deleted = bool(await self.redis.eval(lua_script, 1, self.reprocess_key, self.job_id))
+        return deleted
 
     async def initlize(self):
         try:
@@ -135,7 +156,7 @@ class Consumer(RedisOperator, RunnableMixin):
 
     async def run(self):
         if self.enable_enque_deferred_job:
-            await self._enque_deferred_job()
+            await self.enque_deferred_job()
         await self._consume()
 
     async def cleanup(self):
