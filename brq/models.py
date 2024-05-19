@@ -11,7 +11,7 @@ class Job(BaseModel):
     kwargs: dict
     create_at: int
     """
-    Timestamp in seconds
+    Timestamp in milliseconds
     """
 
     @classmethod

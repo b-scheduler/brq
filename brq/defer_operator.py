@@ -41,7 +41,7 @@ class DeferOperator(RedisOperator):
             2,
             defer_key,
             stream_name,
-            await self.get_current_timestamp(self.redis),
+            await self.get_current_timestamp_ms(self.redis),
             maxlen,
         )
         if elements:

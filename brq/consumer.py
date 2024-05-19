@@ -59,6 +59,34 @@ class RunnableMixin:
 
 
 class Consumer(DeferOperator, RunnableMixin):
+    """
+    A consumer for redis stream.
+
+    When many replicas of one kind of consumer are created, they should be in **the same** group.
+    When many kind of consumers are created, they should be in **different** groups.
+
+    See [example](https://github.com/Wh1isper/brq/tree/main/examples) for running example.
+
+    Args:
+        redis(redis.Redis | redis.RedisCluster): Redis client.
+        awaitable_function(Callable[[Any], Awaitable[Any]]): The function to be called.
+        register_function_name(str): The function name to be registered, if None, will use the function name of `awaitable_function`.
+        group_name(str, default="default-workers"): The group name. All replicas should be in the same group.
+        consumer_identifier(str, default=os.getenv(CONSUMER_IDENTIFIER_ENV, uuid.uuid4().hex)): The consumer identifier. For restarting in some special case.
+        count_per_fetch(int, default=1): The count of message per fetch.
+        block_time(int, default=1): The block time of reading stream.
+        expire_time(int, default=60*60): The expire time of a message. Expired messages will be moved to dead queue.
+        process_timeout(int, default=60): The timeout of a job. If a job is not finished in this time, it will be reprocessed.
+        retry_lock_time(int, default=300): The lock time for retrying. Only one consumer can retry jobs at a time.
+        retry_cooldown(int, default=60): The cooldown time between retrying.
+        redis_prefix(str, default="brq"): The prefix of redis key.
+        redis_seperator(str, default=":"): The seperator of redis key.
+        enable_enque_deferred_job(bool, default=True): Whether to enable enque deferred job. If not, this consumer won't enque deferred jobs.
+        max_message_len(int, default=1000): The maximum length of a message. Follow redis stream `maxlen`.
+        delete_messgae_after_process(bool, default=False): Whether to delete message after process. If many consumer groups are used, this should be set to False.
+        run_parallel(bool, default=False): Whether to run in parallel.
+    """
+
     def __init__(
         self,
         redis: redis.Redis | redis.RedisCluster,
@@ -68,7 +96,6 @@ class Consumer(DeferOperator, RunnableMixin):
         consumer_identifier: str = os.getenv(CONSUMER_IDENTIFIER_ENV, uuid.uuid4().hex),
         count_per_fetch: int = 1,
         block_time: int = 1,
-        pool_time: int = 5,
         expire_time: int = 60 * 60,
         process_timeout: int = 60,
         retry_lock_time: int = 300,
@@ -76,7 +103,7 @@ class Consumer(DeferOperator, RunnableMixin):
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
-        max_message_size: int = 1000,
+        max_message_len: int = 1000,
         delete_messgae_after_process: bool = False,
         run_parallel: bool = False,
     ):
@@ -91,14 +118,13 @@ class Consumer(DeferOperator, RunnableMixin):
         self.count_per_fetch = count_per_fetch
 
         self.block_time = block_time
-        self.pool_time = pool_time
         self.expire_time = expire_time
         self.process_timeout = process_timeout
         self.retry_lock_time = retry_lock_time
         self.retry_cooldown = retry_cooldown
 
         self.enable_enque_deferred_job = enable_enque_deferred_job
-        self.max_message_size = max_message_size
+        self.max_message_len = max_message_len
         self.delete_messgae_after_process = delete_messgae_after_process
         self.run_parallel = run_parallel
 
@@ -298,7 +324,7 @@ class Consumer(DeferOperator, RunnableMixin):
 
     async def run(self):
         if self.enable_enque_deferred_job:
-            await self.enque_deferred_job(self.register_function_name, self.max_message_size)
+            await self.enque_deferred_job(self.register_function_name, self.max_message_len)
         await self._consume()
 
     async def cleanup(self):

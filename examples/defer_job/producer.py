@@ -14,6 +14,7 @@ async def main():
     )
     async with get_redis_client(redis_url) as async_redis_client:
         await Producer(async_redis_client).run_job("echo", ["hello"], defer_seconds=10)
+        print(await Producer(async_redis_client).get_deferred_jobs("echo"))
 
 
 if __name__ == "__main__":

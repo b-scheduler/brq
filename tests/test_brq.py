@@ -108,6 +108,7 @@ async def test_deferred_job(async_redis_client, capfd):
     consumer = Consumer(async_redis_client, mock_consume)
 
     await producer.run_job("mock_consume", ["hello"], defer_seconds=1)
+    assert await producer.get_deferred_jobs("mock_consume")
     await consumer.initialize()
     await consumer.run()
     out, err = capfd.readouterr()

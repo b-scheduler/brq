@@ -23,7 +23,7 @@ Redis >= 6.2, tested with latest docker image
 
 ## Feature
 
-> See [examples](%22./examples%22) for runnable examples.
+> See [examples](%22./examples%22) for running examples.
 
 - Defer job
 - Automatic retry job
