@@ -69,7 +69,7 @@ class Consumer(DeferOperator, RunnableMixin):
         count_per_fetch: int = 1,
         block_time: int = 1,
         pool_time: int = 5,
-        expire_time: int = 24 * 60 * 60,
+        expire_time: int = 60 * 60,
         process_timeout: int = 60,
         retry_lock_time: int = 300,
         retry_cooldown: int = 60,
@@ -116,10 +116,15 @@ class Consumer(DeferOperator, RunnableMixin):
     def deferred_key(self) -> str:
         return self.get_deferred_key(self.register_function_name)
 
+    @property
+    def dead_key(self) -> str:
+        return self.get_dead_message_key(self.register_function_name)
+
     async def _consume(self):
         try:
             if await self._acquire_retry_lock():
                 await self._process_unacked_job()
+                await self._move_expired_jobs()
         finally:
             await self._release_retry_lock()
 
@@ -128,8 +133,72 @@ class Consumer(DeferOperator, RunnableMixin):
         else:
             await self._pool_job()
 
-    async def _process_unacked_job(self):
+    async def process_dead_jobs(self):
         pass
+
+    async def _move_expired_jobs(self):
+        while True:
+            if self._stop_event.is_set():
+                break
+
+            message_id = "0-0"
+            expired_messages = await self.redis.xautoclaim(
+                self.stream_name,
+                self.group_name,
+                self.consumer_name,
+                min_idle_time=self.expire_time * 1000,
+                start_id=message_id,
+                count=1000,
+            )
+
+            if not expired_messages:
+                break
+
+            async def _move_warp(message_id, serialized_job):
+                job = Job.from_redis(serialized_job)
+                await self.redis.zadd(self.dead_key, job.create_at, job.to_redis())
+                await self.redis.xdel(self.stream_name, message_id)
+
+            await asyncio.gather(
+                *[
+                    _move_warp(message_id, serialized_job)
+                    for message_id, serialized_job in expired_messages
+                ]
+            )
+
+            logger.info(f"Moved {len(expired_messages)} jobs to dead message")
+
+    async def _process_unacked_job(self):
+        while True:
+            if self._stop_event.is_set():
+                break
+
+            message_id = "0-0"
+            claimed_messages = (
+                await self.redis.xautoclaim(
+                    self.stream_name,
+                    self.group_name,
+                    self.consumer_name,
+                    min_idle_time=self.process_timeout * 1000,
+                    start_id=message_id,
+                    count=10,
+                )
+            )[1]
+            if not claimed_messages:
+                break
+
+            for message_id, serialized_job in claimed_messages:
+                job = Job.from_redis(serialized_job)
+                try:
+                    await self.awaitable_function(*job.args, **job.kwargs)
+                except Exception as e:
+                    logger.exception(e)
+
+                logger.info(f"Retry {job} successfully")
+                await self.redis.xack(self.stream_name, self.group_name, job.job_id)
+
+                if self.delete_messgae_after_process:
+                    await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job(self):
         _, messages = await self.redis.xreadgroup(
