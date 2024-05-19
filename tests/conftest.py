@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 from functools import partial
@@ -38,7 +39,7 @@ def redis_port(docker_client):
     container = None
     try:
         container = docker_client.containers.run(
-            "redis",
+            f"redis:{os.getenv('REDIS_VERSION', '7')}",
             detach=True,
             ports={"6379": redis_port},
             remove=True,

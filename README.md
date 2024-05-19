@@ -15,7 +15,7 @@
 
 ## Prerequisites
 
-Redis >= 7, tested with latest docker image
+Redis >= 6.2, tested with latest redis 6/7 docker image
 
 ## Install
 
