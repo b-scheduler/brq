@@ -14,7 +14,7 @@ class DeferOperator(RedisOperator):
         super().__init__(redis_prefix, redis_seperator)
         self.redis = redis
 
-    async def enque_deferred_job(self, function_name: str):
+    async def enque_deferred_job(self, function_name: str, maxlen: int = 1000):
         """
         From zset to stream
         """
@@ -22,12 +22,13 @@ class DeferOperator(RedisOperator):
         local zset_key = KEYS[1]
         local stream_key = KEYS[2]
         local current_timestamp = ARGV[1]
+        local maxlen = ARGV[2]
 
         local elements = redis.call('ZRANGEBYSCORE', zset_key, '-inf', current_timestamp)
 
         for i, element in ipairs(elements) do
             redis.call('ZREM', zset_key, element)
-            redis.call('XADD', stream_key, '*', 'data', element)
+            redis.call('XADD', stream_key, 'MAXLEN', maxlen, '*', 'data', element)
         end
 
         return elements
@@ -41,5 +42,6 @@ class DeferOperator(RedisOperator):
             defer_key,
             stream_name,
             await self.get_current_timestamp(self.redis),
+            maxlen,
         )
         logger.info(f"Enqueued deferred jobs: {elements}")

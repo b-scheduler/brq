@@ -14,8 +14,10 @@ class Producer(DeferOperator):
         redis: redis.Redis | redis.RedisCluster,
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
+        max_message_size: int = 1000,
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
+        self.max_message_size = max_message_size
 
     async def run_job(
         self,
@@ -81,7 +83,7 @@ class Producer(DeferOperator):
             kwargs=kwargs or {},
             create_at=created_at,
         )
-        await self.redis.xadd(stream_name, job.to_redis())
+        await self.redis.xadd(stream_name, job.to_redis(), maxlen=self.max_message_size)
         return job
 
     async def prune(self, function_name: str):
@@ -126,6 +128,10 @@ class Producer(DeferOperator):
     async def count_stream(self, function_name: str):
         stream_name = self.get_stream_name(function_name)
         return await self.redis.xlen(stream_name)
+
+    async def count_unacked_jobs(self, function_name: str, group_name: str = "default-workers"):
+        stream_name = self.get_stream_name(function_name)
+        return await self.redis.xpending(stream_name, group_name)
 
     async def count_dead_messages(self, function_name: str):
         dead_key = self.get_dead_message_key(function_name)

@@ -7,6 +7,7 @@ import redis.asyncio as redis
 
 from brq.defer_operator import DeferOperator
 from brq.log import logger
+from brq.models import Job
 from brq.tools import event_wait
 
 CONSUMER_IDENTIFIER_ENV = "BRQ_CONSUMER_IDENTIFIER"
@@ -75,6 +76,9 @@ class Consumer(DeferOperator, RunnableMixin):
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
+        max_message_size: int = 1000,
+        delete_messgae_after_process: bool = False,
+        run_parallel: bool = False,
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
 
@@ -92,6 +96,9 @@ class Consumer(DeferOperator, RunnableMixin):
         self.retry_cooldown = retry_cooldown
 
         self.enable_enque_deferred_job = enable_enque_deferred_job
+        self.max_message_size = max_message_size
+        self.delete_messgae_after_process = delete_messgae_after_process
+        self.run_parallel = run_parallel
 
     @property
     def retry_lock_key(self) -> str:
@@ -115,13 +122,64 @@ class Consumer(DeferOperator, RunnableMixin):
                 await self._process_unacked_job()
         finally:
             await self._release_retry_lock()
-        await self._pool_job()
+
+        if self.run_parallel:
+            await self._pool_job_prallel()
+        else:
+            await self._pool_job()
 
     async def _process_unacked_job(self):
         pass
 
     async def _pool_job(self):
-        pass
+        _, messages = await self.redis.xreadgroup(
+            groupname=self.group_name,
+            consumername=self.consumer_identifier,
+            streams={self.stream_name: ">"},
+            count=self.count_per_fetch,
+            block=self.block_time,
+        )[0]
+        for message_id, serialized_job in messages:
+            job = Job.from_redis(serialized_job)
+            try:
+                await self.awaitable_function(*job.args, **job.kwargs)
+            except Exception as e:
+                logger.exception(e)
+
+            await self.redis.xack(self.stream_name, self.group_name, job.job_id)
+
+            if self.delete_messgae_after_process:
+                await self.redis.xdel(self.stream_name, message_id)
+
+    async def _pool_job_prallel(self):
+        _, messages = await self.redis.xreadgroup(
+            groupname=self.group_name,
+            consumername=self.consumer_identifier,
+            streams={self.stream_name: ">"},
+            count=self.count_per_fetch,
+            block=self.block_time,
+        )[0]
+
+        async def _job_wrap(message_id, *args, **kwargs):
+            await self.awaitable_function(*args, **kwargs)
+            return message_id
+
+        jobs = {
+            messages_id: Job.from_redis(serialized_job) for messages_id, serialized_job in messages
+        }
+        results = await asyncio.gather(
+            *[_job_wrap(message_id, *job.args, **job.kwargs) for message_id, job in jobs.items()],
+            return_exceptions=True,
+        )
+
+        for message_id, result in zip(jobs, results):
+            if isinstance(result, Exception):
+                logger.exception(result)
+                continue
+
+            await self.redis.xack(self.stream_name, self.group_name, message_id)
+            if self.delete_messgae_after_process:
+                await self.redis.xdel(self.stream_name, message_id)
 
     async def _acquire_retry_lock(self) -> bool:
         return await self.redis.get(self.reprocess_key) == self.job_id or await self.redis.set(
@@ -140,7 +198,9 @@ class Consumer(DeferOperator, RunnableMixin):
             end
         """
 
-        deleted = bool(await self.redis.eval(lua_script, 1, self.reprocess_key, self.job_id))
+        deleted = bool(
+            await self.redis.eval(lua_script, 1, self.reprocess_key, self.consumer_identifier)
+        )
         return deleted
 
     async def initlize(self):
@@ -156,7 +216,7 @@ class Consumer(DeferOperator, RunnableMixin):
 
     async def run(self):
         if self.enable_enque_deferred_job:
-            await self.enque_deferred_job()
+            await self.enque_deferred_job(self.register_function_name, self.max_message_size)
         await self._consume()
 
     async def cleanup(self):
