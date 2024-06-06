@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import os
 import uuid
 from typing import Any, Awaitable, Callable
@@ -57,6 +58,9 @@ class RunnableMixin:
         Cleanup, implement in subclass
         """
 
+    def copy(self):
+        return copy.deepcopy(self)
+
 
 class Consumer(DeferOperator, RunnableMixin):
     """
@@ -103,6 +107,7 @@ class Consumer(DeferOperator, RunnableMixin):
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
+        enable_reprocess_timeout_job: bool = True,
         max_message_len: int = 1000,
         delete_messgae_after_process: bool = False,
         run_parallel: bool = False,
@@ -124,6 +129,7 @@ class Consumer(DeferOperator, RunnableMixin):
         self.retry_cooldown = retry_cooldown
 
         self.enable_enque_deferred_job = enable_enque_deferred_job
+        self.enable_reprocess_timeout_job = enable_reprocess_timeout_job
         self.max_message_len = max_message_len
         self.delete_messgae_after_process = delete_messgae_after_process
         self.run_parallel = run_parallel
@@ -201,6 +207,9 @@ class Consumer(DeferOperator, RunnableMixin):
                 await self.redis.xdel(self.stream_name, message_id)
 
     async def _process_unacked_job(self):
+        if not self.enable_reprocess_timeout_job:
+            return
+
         while True:
             if self._stop_event.is_set():
                 break
