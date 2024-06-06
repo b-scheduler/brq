@@ -58,9 +58,6 @@ class RunnableMixin:
         Cleanup, implement in subclass
         """
 
-    def copy(self):
-        return copy.deepcopy(self)
-
 
 class Consumer(DeferOperator, RunnableMixin):
     """

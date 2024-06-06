@@ -11,8 +11,8 @@ class Daemon:
     Tool for daemonizing a consumer.
     """
 
-    def __init__(self, runnable: RunnableMixin, concurrency: int = 1):
-        self.runnables = [runnable.copy() for _ in range(concurrency)]
+    def __init__(self, *runnables: list[RunnableMixin]):
+        self.runnables = runnables
 
     async def run_forever(self, stop_signals: list = [signal.SIGINT, signal.SIGTERM]):
         loop = asyncio.get_event_loop()
