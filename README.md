@@ -46,8 +46,8 @@ async def main():
         host=os.getenv("REDIS_HOST", "localhost"),
         port=int(os.getenv("REDIS_PORT", 6379)),
         db=int(os.getenv("REDIS_DB", 0)),
-        cluster=bool(os.getenv("REDIS_CLUSTER", False)),
-        tls=bool(os.getenv("REDIS_TLS", False)),
+        cluster=bool(os.getenv("REDIS_CLUSTER", "false") in ["True", "true", "1"]),
+        tls=bool(os.getenv("REDIS_TLS", "false") in ["True", "true", "1"]),
     )
     async with get_redis_client(redis_url) as async_redis_client:
         await Producer(async_redis_client).run_job("echo", ["hello"])
@@ -78,8 +78,8 @@ async def main():
         host=os.getenv("REDIS_HOST", "localhost"),
         port=int(os.getenv("REDIS_PORT", 6379)),
         db=int(os.getenv("REDIS_DB", 0)),
-        cluster=bool(os.getenv("REDIS_CLUSTER", False)),
-        tls=bool(os.getenv("REDIS_TLS", False)),
+        cluster=bool(os.getenv("REDIS_CLUSTER", "false") in ["True", "true", "1"]),
+        tls=bool(os.getenv("REDIS_TLS", "false") in ["True", "true", "1"]),
     )
     async with get_redis_client(redis_url) as async_redis_client:
         daemon = Daemon(Consumer(async_redis_client, echo))
