@@ -51,4 +51,4 @@ if __name__ == "__main__":
         async def cleanup(self):
             print("cleanup")
 
-    asyncio.run(Daemon(DummyConsumer(), concurrency=10).run_forever())
+    asyncio.run(Daemon(DummyConsumer()).run_forever())
