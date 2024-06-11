@@ -226,6 +226,9 @@ class Consumer(DeferOperator, RunnableMixin):
                 break
 
             for message_id, serialized_job in claimed_messages:
+                if message_id == serialized_job == None:
+                    # Fix (None, None) for redis 6.x
+                    continue
                 job = Job.from_message(serialized_job)
                 try:
                     await self.awaitable_function(*job.args, **job.kwargs)
