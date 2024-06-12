@@ -31,3 +31,8 @@ jobs:
                   pytest -vv --cov-config=.coveragerc --cov-report term-missing --cov=brq/ tests
               env:
                   REDIS_VERSION: ${{ matrix.redis-version }}
+            - name: Upload coverage reports to Codecov
+              if: matrix.python-version == '3.10' && matrix.redis-version == '7'
+              uses: codecov/codecov-action@v4.0.1
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}

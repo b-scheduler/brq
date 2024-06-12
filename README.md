@@ -3,6 +3,7 @@
 ![](https://img.shields.io/pypi/dm/brq)
 ![](https://img.shields.io/github/last-commit/wh1isper/brq)
 ![](https://img.shields.io/pypi/pyversions/brq)
+[![codecov](https://codecov.io/gh/Wh1isper/brq/graph/badge.svg?token=84A7BQZIS2)](https://codecov.io/gh/Wh1isper/brq)
 
 > This project is inspired by [arq](https://github.com/samuelcolvin/arq).
 > Not intentionally dividing the community, I desperately needed a redis queue based on redis stream for work reasons and just decided to open source it.
