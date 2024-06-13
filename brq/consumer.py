@@ -125,6 +125,12 @@ class Consumer(DeferOperator, RunnableMixin):
         self.block_time = block_time
         self.expire_time = expire_time
         self.process_timeout = process_timeout
+
+        if self.expire_time < self.process_timeout:
+            logger.warning(
+                f"expire_time({self.expire_time}) < process_timeout({self.process_timeout}), will causes no job retried but moved dead queue(if enabled)."
+            )
+
         self.retry_lock_time = retry_lock_time
         self.retry_cooldown = retry_cooldown
 
