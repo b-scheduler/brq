@@ -105,6 +105,7 @@ class Consumer(DeferOperator, RunnableMixin):
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
         enable_reprocess_timeout_job: bool = True,
+        enable_dead_queue: bool = True,
         max_message_len: int = 1000,
         delete_messgae_after_process: bool = False,
         run_parallel: bool = False,
@@ -127,6 +128,7 @@ class Consumer(DeferOperator, RunnableMixin):
 
         self.enable_enque_deferred_job = enable_enque_deferred_job
         self.enable_reprocess_timeout_job = enable_reprocess_timeout_job
+        self.enable_dead_queue = enable_dead_queue
         self.max_message_len = max_message_len
         self.delete_messgae_after_process = delete_messgae_after_process
         self.run_parallel = run_parallel
@@ -199,9 +201,11 @@ class Consumer(DeferOperator, RunnableMixin):
                     # Fix (None, None) for redis 6.x
                     continue
                 job = Job.from_message(serialized_job)
-                await self.redis.zadd(self.dead_key, {job.to_redis(): job.create_at})
-                logger.info(f"Put expired job {job} to dead queue")
+                if self.enable_dead_queue:
+                    await self.redis.zadd(self.dead_key, {job.to_redis(): job.create_at})
+                    logger.info(f"Put expired job {job} to dead queue")
                 await self.redis.xdel(self.stream_name, message_id)
+                logger.debug(f"{job} expired")
 
     async def _process_unacked_job(self):
         if not self.enable_reprocess_timeout_job:
