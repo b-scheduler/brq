@@ -83,6 +83,8 @@ class Consumer(DeferOperator, RunnableMixin):
         redis_prefix(str, default="brq"): The prefix of redis key.
         redis_seperator(str, default=":"): The seperator of redis key.
         enable_enque_deferred_job(bool, default=True): Whether to enable enque deferred job. If not, this consumer won't enque deferred jobs.
+        enable_reprocess_timeout_job(bool, default=True): Whether to enable reprocess timeout job. If not, this consumer won't reprocess timeout jobs, jobs with expired timeout will be moved to dead queue(if enabled).
+        enable_dead_queue(bool, default=True): Whether to enable dead queue. If not, this consumer won't move expired jobs to dead queue but just delete them.
         max_message_len(int, default=1000): The maximum length of a message. Follow redis stream `maxlen`.
         delete_messgae_after_process(bool, default=False): Whether to delete message after process. If many consumer groups are used, this should be set to False.
         run_parallel(bool, default=False): Whether to run in parallel.
