@@ -34,6 +34,33 @@ def pairs_to_dict(response, decode_keys=False, decode_string_values=False):
         return dict(zip(it, it))
 
 
+def prettify(function_name: str, job_queue_info: JobQueueInfo) -> str:
+    template = f"""------------------------------------------------------
+Function: {function_name}
+
+  Brief for stream:
+    length: {job_queue_info.stream_full_info.length}
+    groups: {job_queue_info.stream_full_info.groups}
+    radix_tree_keys: {job_queue_info.stream_full_info.radix_tree_keys}
+    radix_tree_nodes: {job_queue_info.stream_full_info.radix_tree_nodes}
+    last_generated_id: {job_queue_info.stream_full_info.last_generated_id}
+    max_deleted_entry_id: {job_queue_info.stream_full_info.max_deleted_entry_id}
+    entries_added: {job_queue_info.stream_full_info.entries_added}
+    entries: {job_queue_info.stream_full_info.entries}
+    group: {job_queue_info.stream_full_info.group}
+
+  Brief for defer queue:
+    length: {len(job_queue_info.defer_queue_info)}
+    details: {job_queue_info.defer_queue_info}
+
+  Brief for dead queue:
+    length: {len(job_queue_info.dead_queue_info)}
+    details: {job_queue_info.dead_queue_info}
+"""
+
+    return template.strip() + "\n"
+
+
 class ScannerMixin(DeferOperator):
     def __init__(
         self,

@@ -3,7 +3,7 @@ from functools import wraps
 
 import click
 
-from brq.browser import Browser
+from brq.browser import Browser, prettify
 from brq.tools import get_redis_client, get_redis_url
 
 from .envs import *
@@ -95,6 +95,10 @@ async def browser(
     redis_prefix,
     redis_seperator,
 ):
+    """
+    See all job and status in CLI
+    """
+
     redis_url = redis_url or get_redis_url(
         host=redis_host,
         port=redis_port,
@@ -105,19 +109,23 @@ async def browser(
         password=redis_password,
     )
     async with get_redis_client(redis_url, is_cluster=redis_cluster) as redis_client:
+        brq_jobs = await Browser(
+            redis_client,
+            **{
+                k: v
+                for k, v in dict(
+                    redis_prefix=redis_prefix,
+                    redis_seperator=redis_seperator,
+                ).items()
+                if v is not None
+            },
+        ).status()
+
         print(
-            await Browser(
-                redis_client,
-                **{
-                    k: v
-                    for k, v in dict(
-                        redis_prefix=redis_prefix,
-                        redis_seperator=redis_seperator,
-                    ).items()
-                    if v is not None
-                },
-            ).status()
+            f"{len(brq_jobs.job_queue_info)} functions in total: {list(brq_jobs.job_queue_info.keys())}"
         )
+        for function_name, job_queue_info in brq_jobs.job_queue_info.items():
+            print(prettify(function_name, job_queue_info))
 
 
 @click.group()
