@@ -1,6 +1,7 @@
 from typing import AsyncIterator
 
 import redis.asyncio as redis
+from pydantic import BaseModel
 
 from brq.log import logger
 from brq.rds import RedisOperator
