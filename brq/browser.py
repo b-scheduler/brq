@@ -184,7 +184,7 @@ class _ConsumerInfo(BaseModel):
 
     name: str
     seen_time: datetime
-    active_time: datetime
+    active_time: Optional[datetime] = None
     pel_count: int
     pending: list[_PendingJobInfo]
 
