@@ -8,7 +8,7 @@ class DeferOperator(RedisOperator):
     def __init__(
         self,
         redis: redis.Redis | redis.RedisCluster,
-        redis_prefix: list[str] = ["brq"],
+        redis_prefix: str = "brq",
         redis_seperator: str = ":",
     ):
         super().__init__(redis_prefix, redis_seperator)

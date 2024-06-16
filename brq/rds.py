@@ -6,11 +6,15 @@ from brq.tools import (
     timestamp_to_datetime,
 )
 
+STREAM_KEY = "stream"
+DEAD_QUEUE_KEY = "dead"
+DEFERRED_QUEUE_KEY = "deferred"
+
 
 class RedisOperator:
     def __init__(
         self,
-        redis_prefix: list[str] = ["brq"],
+        redis_prefix: str = "brq",
         redis_seperator: str = ":",
     ):
         self.redis_prefix = redis_prefix
@@ -20,13 +24,13 @@ class RedisOperator:
         return self.redis_seperator.join([self.redis_prefix] + list(key))
 
     def get_stream_name(self, function_name: str) -> str:
-        return self.get_redis_key(function_name, "stream")
+        return self.get_redis_key(function_name, STREAM_KEY)
 
     def get_dead_message_key(self, function_name: str) -> str:
-        return self.get_redis_key(function_name, "dead")
+        return self.get_redis_key(function_name, DEAD_QUEUE_KEY)
 
     def get_deferred_key(self, function_name: str) -> str:
-        return self.get_redis_key(function_name, "deferred")
+        return self.get_redis_key(function_name, DEFERRED_QUEUE_KEY)
 
     async def get_current_timestamp(self, redis_client: redis.Redis | redis.RedisCluster) -> int:
         return await get_current_timestamp(redis_client)
