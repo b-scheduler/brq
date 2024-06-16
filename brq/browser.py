@@ -38,10 +38,10 @@ class Browser(ScannerMixin):
         redis: redis.Redis | redis.RedisCluster,
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
-        group_name: str | None = None,
+        group_name: str = "default-workers",
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
-        self.group_name = group_name or "default-workers"
+        self.group_name = group_name
 
     async def status(self):
         async for stream_key in self.scan_iter():

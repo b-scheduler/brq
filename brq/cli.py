@@ -115,9 +115,15 @@ async def browser(
     async with get_redis_client(redis_url, is_cluster=redis_cluster) as redis_client:
         await Browser(
             redis_client,
-            redis_prefix=redis_prefix,
-            redis_seperator=redis_seperator,
-            group_name=group_name,
+            **{
+                k: v
+                for k, v in dict(
+                    redis_prefix=redis_prefix,
+                    redis_seperator=redis_seperator,
+                    group_name=group_name,
+                ).items()
+                if v is not None
+            },
         ).status()
 
 
