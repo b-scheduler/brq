@@ -1,5 +1,6 @@
 ![](https://img.shields.io/github/license/wh1isper/brq)
 ![](https://img.shields.io/github/v/release/wh1isper/brq)
+![](https://img.shields.io/docker/image-size/wh1isper/brq)
 ![](https://img.shields.io/pypi/dm/brq)
 ![](https://img.shields.io/github/last-commit/wh1isper/brq)
 ![](https://img.shields.io/pypi/pyversions/brq)

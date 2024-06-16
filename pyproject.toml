@@ -7,7 +7,7 @@ name = "brq"
 description = "brq"
 keywords = ["brq"]
 requires-python = ">=3.10"
-dependencies = ["pydantic", "redis>=5.0", "loguru"]
+dependencies = ["pydantic", "redis>=5.0", "loguru", "click"]
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,7 +17,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "docker", "pytest-asyncio", "pytest-cov"]
+browser = ["fastapi", "uvicorn[standard]", "pydantic>=2"]
+test = ["pytest", "docker", "pytest-asyncio", "pytest-cov", "brq[browser]"]
 docs = ["Sphinx", "pydata-sphinx-theme", "sphinx-click", "autodoc_pydantic"]
 
 [[project.authors]]
@@ -27,6 +28,9 @@ email = "9573586@qq.com"
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
+
+[project.scripts]
+brq = "brq.cli:cli"
 
 [project.license]
 text = "BSD 3-Clause License"

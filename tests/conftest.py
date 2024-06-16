@@ -5,11 +5,11 @@ os.environ["BRQ_LOG_LEVEL"] = "DEBUG"
 import socket
 import time
 
-import docker
 import pytest
 import redis
 import redis.asyncio
 
+import docker
 from brq.tools import get_redis_url
 
 
