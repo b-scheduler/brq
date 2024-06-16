@@ -82,13 +82,6 @@ def coro(f):
     type=str,
     envvar=REDIS_SEPERATOR_ENV,
 )
-@click.option(
-    "--group-name",
-    required=False,
-    help="Group name",
-    type=str,
-    envvar=CONSUMER_GROUP_NAME_ENV,
-)
 @coro
 async def browser(
     redis_host,
@@ -101,7 +94,6 @@ async def browser(
     redis_url,
     redis_prefix,
     redis_seperator,
-    group_name,
 ):
     redis_url = redis_url or get_redis_url(
         host=redis_host,
@@ -113,18 +105,19 @@ async def browser(
         password=redis_password,
     )
     async with get_redis_client(redis_url, is_cluster=redis_cluster) as redis_client:
-        await Browser(
-            redis_client,
-            **{
-                k: v
-                for k, v in dict(
-                    redis_prefix=redis_prefix,
-                    redis_seperator=redis_seperator,
-                    group_name=group_name,
-                ).items()
-                if v is not None
-            },
-        ).status()
+        print(
+            await Browser(
+                redis_client,
+                **{
+                    k: v
+                    for k, v in dict(
+                        redis_prefix=redis_prefix,
+                        redis_seperator=redis_seperator,
+                    ).items()
+                    if v is not None
+                },
+            ).status()
+        )
 
 
 @click.group()

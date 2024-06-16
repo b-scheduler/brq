@@ -7,6 +7,7 @@ from brq.tools import get_redis_client, get_redis_url
 
 async def echo(message):
     print(message)
+    raise Exception
 
 
 async def main():
