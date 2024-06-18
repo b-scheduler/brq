@@ -87,7 +87,7 @@ class Producer(DeferOperator):
             logger.info(
                 f"Deferring job: {function_name} until {datetime.fromtimestamp(defer_until / 1000)}"
             )
-            job = await self._emit_deferred_job(
+            job = await self.run_deferred_job(
                 function_name,
                 defer_until,
                 args,
@@ -95,30 +95,12 @@ class Producer(DeferOperator):
             )
         else:
             logger.info(f"Scheduling job: {function_name}")
-            job = await self._emit_job(function_name, args, kwargs)
+            job = await self._run_job(function_name, args, kwargs)
 
         logger.info(f"Job created: {job}")
         return job
 
-    async def _emit_deferred_job(
-        self,
-        function_name: str,
-        defer_until: int,
-        args: list[Any] = None,
-        kwargs: dict[str, Any] = None,
-    ) -> Job:
-        defer_key = self.get_deferred_key(function_name)
-        created_at = await self.get_current_timestamp_ms(self.redis)
-
-        job = Job(
-            args=args or [],
-            kwargs=kwargs or {},
-            create_at=created_at,
-        )
-        await self.redis.zadd(defer_key, {job.to_redis(): defer_until})
-        return job
-
-    async def _emit_job(
+    async def _run_job(
         self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
     ) -> Job:
         stream_name = self.get_stream_name(function_name)
@@ -131,6 +113,22 @@ class Producer(DeferOperator):
         )
         await self.redis.xadd(stream_name, job.to_message(), maxlen=self.max_message_len)
         return job
+
+    async def run_deferred_job(
+        self,
+        function_name: str,
+        defer_until: int,
+        args: list[Any] = None,
+        kwargs: dict[str, Any] = None,
+    ) -> Job:
+        created_at = await self.get_current_timestamp_ms(self.redis)
+
+        job = Job(
+            args=args or [],
+            kwargs=kwargs or {},
+            create_at=created_at,
+        )
+        return await self.emit_deferred_job(function_name, defer_until, job)
 
     async def prune(self, function_name: str):
         """
