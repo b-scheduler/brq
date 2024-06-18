@@ -86,7 +86,7 @@ class Consumer(DeferOperator, RunnableMixin):
         enable_reprocess_timeout_job(bool, default=True): Whether to enable reprocess timeout job. If not, this consumer won't reprocess timeout jobs, jobs with expired timeout will be moved to dead queue(if enabled).
         enable_dead_queue(bool, default=True): Whether to enable dead queue. If not, this consumer won't move expired jobs to dead queue but just delete them.
         max_message_len(int, default=1000): The maximum length of a message. Follow redis stream `maxlen`.
-        delete_messgae_after_process(bool, default=False): Whether to delete message after process. If many consumer groups are used, this should be set to False.
+        delete_message_after_process(bool, default=False): Whether to delete message after process. If many consumer groups are used, this should be set to False.
         run_parallel(bool, default=False): Whether to run in parallel.
     """
 
@@ -109,7 +109,7 @@ class Consumer(DeferOperator, RunnableMixin):
         enable_reprocess_timeout_job: bool = True,
         enable_dead_queue: bool = True,
         max_message_len: int = 1000,
-        delete_messgae_after_process: bool = False,
+        delete_message_after_process: bool = False,
         run_parallel: bool = False,
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
@@ -138,7 +138,7 @@ class Consumer(DeferOperator, RunnableMixin):
         self.enable_reprocess_timeout_job = enable_reprocess_timeout_job
         self.enable_dead_queue = enable_dead_queue
         self.max_message_len = max_message_len
-        self.delete_messgae_after_process = delete_messgae_after_process
+        self.delete_message_after_process = delete_message_after_process
         self.run_parallel = run_parallel
 
     @property
@@ -250,7 +250,7 @@ class Consumer(DeferOperator, RunnableMixin):
                     logger.info(f"Retry {job} successfully")
                     await self.redis.xack(self.stream_name, self.group_name, message_id)
 
-                    if self.delete_messgae_after_process:
+                    if self.delete_message_after_process:
                         await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job(self):
@@ -274,7 +274,7 @@ class Consumer(DeferOperator, RunnableMixin):
             else:
                 await self.redis.xack(self.stream_name, self.group_name, message_id)
 
-                if self.delete_messgae_after_process:
+                if self.delete_message_after_process:
                     await self.redis.xdel(self.stream_name, message_id)
 
     async def _pool_job_prallel(self):
@@ -308,7 +308,7 @@ class Consumer(DeferOperator, RunnableMixin):
                 continue
 
             await self.redis.xack(self.stream_name, self.group_name, message_id)
-            if self.delete_messgae_after_process:
+            if self.delete_message_after_process:
                 await self.redis.xdel(self.stream_name, message_id)
 
     async def _acquire_retry_lock(self) -> bool:

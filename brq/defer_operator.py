@@ -144,7 +144,7 @@ class DeferOperator(RedisOperator):
         """
         Count stream length
 
-        If Consumer's `delete_messgae_after_process` if False, will include already processed messages
+        If Consumer's `delete_message_after_process` if False, will include already processed messages
         """
         stream_name = self.get_stream_name(function_name)
         return await self.redis.xlen(stream_name)
