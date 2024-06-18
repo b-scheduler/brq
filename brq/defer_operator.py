@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -50,7 +51,7 @@ class DeferOperator(RedisOperator):
         if elements:
             logger.info(f"Enqueued deferred jobs: {elements}")
 
-    async def remove_deferred_job(
+    async def _remove_deferred_job(
         self,
         function_name: str,
         job: Job,
@@ -162,3 +163,8 @@ class DeferOperator(RedisOperator):
     async def count_dead_messages(self, function_name: str):
         dead_key = self.get_dead_message_key(function_name)
         return await self.redis.zcard(dead_key)
+
+    async def emit_deferred_job(self, function_name: str, defer_until: int, job: Job):
+        defer_key = self.get_deferred_key(function_name)
+        await self.redis.zadd(defer_key, {job.to_redis(): defer_until})
+        return job
