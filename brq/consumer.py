@@ -79,7 +79,7 @@ class Consumer(DeferOperator, RunnableMixin):
         expire_time(int, default=60*60): The expire time of a message. Expired messages will be moved to dead queue.
         process_timeout(int, default=60): The timeout of a job. If a job is not finished in this time, it will be reprocessed.
         retry_lock_time(int, default=300): The lock time for retrying. Only one consumer can retry jobs at a time.
-        retry_cooldown(int, default=60): The cooldown time between retrying.
+        retry_cooldown_time(int, default=60): The cooldown time between retrying.
         redis_prefix(str, default="brq"): The prefix of redis key.
         redis_seperator(str, default=":"): The seperator of redis key.
         enable_enque_deferred_job(bool, default=True): Whether to enable enque deferred job. If not, this consumer won't enque deferred jobs.
@@ -102,7 +102,7 @@ class Consumer(DeferOperator, RunnableMixin):
         expire_time: int = 60 * 60,
         process_timeout: int = 60,
         retry_lock_time: int = 300,
-        retry_cooldown: int = 60,
+        retry_cooldown_time: int = 60,
         redis_prefix: str = "brq",
         redis_seperator: str = ":",
         enable_enque_deferred_job: bool = True,
@@ -132,7 +132,7 @@ class Consumer(DeferOperator, RunnableMixin):
             )
 
         self.retry_lock_time = retry_lock_time
-        self.retry_cooldown = retry_cooldown
+        self.retry_cooldown_time = retry_cooldown_time
 
         self.enable_enque_deferred_job = enable_enque_deferred_job
         self.enable_reprocess_timeout_job = enable_reprocess_timeout_job
@@ -143,11 +143,11 @@ class Consumer(DeferOperator, RunnableMixin):
 
     @property
     def retry_lock_key(self) -> str:
-        return self.get_redis_key(self.stream_name, self.group_name, "lock")
+        return f"{self.stream_name}-{self.group_name}-lock"
 
     @property
     def retry_cooldown_key(self) -> str:
-        return self.get_redis_key(self.stream_name, self.group_name, "cooldown")
+        return f"{self.stream_name}-{self.group_name}-cooldown"
 
     @property
     def stream_name(self) -> str:
@@ -161,11 +161,18 @@ class Consumer(DeferOperator, RunnableMixin):
     def dead_key(self) -> str:
         return self.get_dead_message_key(self.register_function_name)
 
+    async def _is_retry_cooldown(self) -> bool:
+        return await self.redis.exists(self.retry_cooldown_key)
+
+    async def _set_retry_timeout(self):
+        await self.redis.set(self.retry_cooldown_key, "1", ex=self.retry_cooldown_time)
+
     async def _consume(self):
         try:
-            if await self._acquire_retry_lock():
+            if not await self._is_retry_cooldown() and await self._acquire_retry_lock():
                 await self._process_unacked_job()
                 await self._move_expired_jobs()
+                await self._set_retry_timeout()
         finally:
             await self._release_retry_lock()
 

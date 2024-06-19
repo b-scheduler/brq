@@ -84,7 +84,12 @@ async def test_prune(async_redis_client, capfd):
 
 async def test_unprocessed_job(async_redis_client, capfd):
     producer = Producer(async_redis_client)
-    consumer = Consumer(async_redis_client, mock_consume_raise_exception, process_timeout=0.001)
+    consumer = Consumer(
+        async_redis_client,
+        mock_consume_raise_exception,
+        process_timeout=0.001,
+        retry_cooldown_time=1,
+    )
     browser = Browser(async_redis_client)
 
     await browser.status()
@@ -97,7 +102,7 @@ async def test_unprocessed_job(async_redis_client, capfd):
 
     out, err = capfd.readouterr()
     assert "hello" not in out
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(1.1)
     await consumer.run()
     await browser.status()
 
