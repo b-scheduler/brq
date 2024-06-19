@@ -165,5 +165,35 @@ async def test_deferred_job(async_redis_client, capfd):
     await consumer.cleanup()
 
 
+async def test_not_unique_deferred_job(
+    async_redis_client,
+    capfd,
+):
+    producer = Producer(async_redis_client)
+    consumer = Consumer(async_redis_client, mock_consume)
+    browser = Browser(async_redis_client)
+
+    await browser.status()
+    assert not await producer.deferred_job_exists("mock_consume", ["hello"])
+    await producer.run_job("mock_consume", ["hello"], defer_seconds=1, unique=False)
+    await producer.run_job("mock_consume", ["hello"], defer_seconds=1, unique=False)
+    await browser.status()
+    assert await producer.deferred_job_exists("mock_consume", ["hello"])
+    assert len(await producer.get_deferred_jobs("mock_consume")) == 1
+    await browser.status()
+    await consumer.initialize()
+    await browser.status()
+    await consumer.run()
+    await browser.status()
+    out, err = capfd.readouterr()
+    assert "hello" not in out
+    await asyncio.sleep(1.1)
+    await browser.status()
+    await consumer.run()
+    out, err = capfd.readouterr()
+    assert "hello" in out
+    await consumer.cleanup()
+
+
 if __name__ == "__main__":
     pytest.main(["-s", "-vv", __file__])

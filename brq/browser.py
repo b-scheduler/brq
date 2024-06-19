@@ -35,10 +35,8 @@ def pairs_to_dict(response, decode_keys=False, decode_string_values=False):
 
 
 def prettify(function_name: str, job_queue_info: JobQueueInfo) -> str:
-    template = f"""------------------------------------------------------
-Function: {function_name}
-
-  Brief for stream:
+    stream_brief = (
+        f"""
     length: {job_queue_info.stream_full_info.length}
     groups: {job_queue_info.stream_full_info.groups}
     radix_tree_keys: {job_queue_info.stream_full_info.radix_tree_keys}
@@ -48,6 +46,16 @@ Function: {function_name}
     entries_added: {job_queue_info.stream_full_info.entries_added}
     entries: {job_queue_info.stream_full_info.entries}
     group: {job_queue_info.stream_full_info.group}
+""".strip()
+        if job_queue_info.stream_full_info
+        else "None"
+    )
+
+    template = f"""------------------------------------------------------
+Function: {function_name}
+
+  Brief for stream:
+    {stream_brief}
 
   Brief for defer queue:
     length: {len(job_queue_info.defer_queue_info)}
@@ -78,7 +86,7 @@ class ScannerMixin(DeferOperator):
         else:
             scan_key = self.get_redis_key("*")
         logger.debug(f"Scanning {scan_key}")
-        return self.redis.scan_iter(match=scan_key, _type="stream")
+        return self.redis.scan_iter(match=scan_key)
 
     async def parse_redis_key(self, redis_key: str) -> tuple[str, str]:
         function_and_domain = redis_key[len(self.redis_prefix + self.redis_seperator) :]
@@ -89,7 +97,10 @@ class ScannerMixin(DeferOperator):
 
         return function, domain_key
 
-    async def get_stream_full_info(self, stream_key: str) -> _StreamFullInfo:
+    async def get_stream_full_info(self, stream_key: str) -> _StreamFullInfo | None:
+        if not await self.redis.exists(stream_key):
+            return None
+
         try:
             full_response = await self.redis.xinfo_stream(stream_key, full=True)
         except IndexError:
@@ -231,7 +242,7 @@ class DeadQueueInfo(BaseModel):
 
 
 class JobQueueInfo(BaseModel):
-    stream_full_info: _StreamFullInfo
+    stream_full_info: Optional[_StreamFullInfo]
     defer_queue_info: list[DeferQueueInfo]
     dead_queue_info: list[DeadQueueInfo]
 
@@ -253,7 +264,11 @@ class Browser(ScannerMixin):
         inspect_functions = []
         async for stream_key in self.scan_iter():
             function_name, _ = await self.parse_redis_key(stream_key)
-            inspect_functions.append(function_name)
+            (
+                inspect_functions.append(function_name)
+                if function_name not in inspect_functions
+                else None
+            )
         return BrqJobsInfo(
             job_queue_info={
                 function_name: await self.one_queue_info(function_name)
