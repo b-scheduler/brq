@@ -83,6 +83,10 @@ class ScannerMixin(DeferOperator):
     async def parse_redis_key(self, redis_key: str) -> tuple[str, str]:
         function_and_domain = redis_key[len(self.redis_prefix + self.redis_seperator) :]
         function, domain_key = function_and_domain.split(self.redis_seperator)
+
+        if "{" in function:
+            function = function.replace("{", "").replace("}", "")
+
         return function, domain_key
 
     async def get_stream_full_info(self, stream_key: str) -> _StreamFullInfo:
