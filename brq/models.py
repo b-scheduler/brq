@@ -9,10 +9,12 @@ from pydantic import BaseModel
 class Job(BaseModel):
     args: list
     kwargs: dict
-    create_at: int
+    create_at: int = 0
     """
     Timestamp in milliseconds
     """
+
+    uid: str = "no_uid"
 
     @classmethod
     def from_redis(cls, serialized: str) -> Job:

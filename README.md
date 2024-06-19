@@ -98,6 +98,14 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+## Technical details: deferred jobs
+
+We can use `defer_until` as a `datetime` or `defer_hours`+`defer_minutes`+`defer_seconds` to calculate a timestamp based on current redis timestamp. And use `unique` to set the job to be unique or not.
+
+By default, `unique=True` means `Job` with the **exactly** same `function_name`, `args` and `kwargs` will be unique, which allows the same `Job` to add into the deferred queue more than once. In this case, we differentiate tasks by the current redis timestamp(`Job.create_at`) and an additional uuid(`Job.uid`), just like `redis stream` did.
+
+If `unique=False`, the same `Job` will be added into the deferred queue only once. Duplicates will update the job's defer time. In this case, you can use your own uuid in `args`(or `kwargs`) to differentiate `Job`.
+
 ## Develop
 
 Install pre-commit before commit

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 import redis.asyncio as redis
 
@@ -16,7 +17,6 @@ class Producer(DeferOperator):
 
     Job control methods:
     * Call `run_job` to emit job.
-    * Call `remove_deferred_job` to remove deferred job(if not been emitted).
     * Call `prune` to remove all jobs.
 
     Queue methods:
@@ -24,6 +24,10 @@ class Producer(DeferOperator):
     * Call `count_deferred_jobs` to count deferred jobs.
     * Call `count_unacked_jobs` to count unacked jobs.
     * Call `count_dead_messages` to count all dead messages.
+
+    Some higher level methods, see ``DeferOperator``
+
+    For inspect the whole brq, see ``browser.py``
 
     Args:
         redis (redis.Redis | redis.RedisCluster): async redis client
@@ -124,13 +128,18 @@ class Producer(DeferOperator):
         kwargs: dict[str, Any] = None,
         unique: bool = True,
     ) -> Job:
-        created_at = await self.get_current_timestamp_ms(self.redis)
-
-        job = Job(
-            args=args or [],
-            kwargs=kwargs or {},
-            create_at=created_at if unique else 0,
-        )
+        if unique:
+            job = Job(
+                args=args or [],
+                kwargs=kwargs or {},
+                create_at=await self.get_current_timestamp_ms(self.redis),
+                uid=uuid4().hex,
+            )
+        else:
+            job = Job(
+                args=args or [],
+                kwargs=kwargs or {},
+            )
         return await self.emit_deferred_job(function_name, defer_until, job)
 
     async def prune(self, function_name: str):
@@ -165,6 +174,9 @@ class Producer(DeferOperator):
     async def deferred_job_exists(
         self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
     ) -> bool:
+        """
+        Only not unique job can be detected
+        """
         job = Job(
             args=args or [],
             kwargs=kwargs or {},
