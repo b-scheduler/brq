@@ -86,7 +86,7 @@ class Producer(DeferOperator):
         )
 
         if defer_until:
-            logger.info(
+            logger.debug(
                 f"Deferring job: {function_name} until {datetime.fromtimestamp(defer_until / 1000)}"
             )
             job = await self.run_deferred_job(
@@ -97,7 +97,7 @@ class Producer(DeferOperator):
                 unique=unique,
             )
         else:
-            logger.info(f"Scheduling job: {function_name}")
+            logger.debug(f"Scheduling job: {function_name}")
             job = await self._run_job(function_name, args, kwargs)
 
         return job

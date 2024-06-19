@@ -49,7 +49,7 @@ class DeferOperator(RedisOperator):
             maxlen,
         )
         if elements:
-            logger.info(f"Enqueued deferred jobs: {elements}")
+            logger.debug(f"Enqueued deferred jobs: {elements}")
 
     async def _remove_deferred_job(
         self,

@@ -106,6 +106,7 @@ class ScannerMixin(DeferOperator):
         except IndexError:
             # If no consumer group is found, xinfo_stream full will raise IndexError
             # https://github.com/redis/redis-py/pull/3282
+            # TODO: Remove when redis release >=5.0.6
             logger.warning(
                 "Due to redis-py bug, only brief info when no consumer group found. See https://github.com/redis/redis-py/pull/3282 for more details."
             )
