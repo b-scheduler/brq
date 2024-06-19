@@ -51,6 +51,7 @@ class Producer(DeferOperator):
         defer_hours: int = 0,
         defer_minutes: int = 0,
         defer_seconds: int = 0,
+        unique: bool = True,
     ) -> Job:
         """
         Emit job to redis stream. The args and kwargs will be serialized to json.
@@ -68,6 +69,7 @@ class Producer(DeferOperator):
             defer_hours (int, optional): defer hours. Defaults to 0.
             defer_minutes (int, optional): defer minutes. Defaults to 0.
             defer_seconds (int, optional): defer seconds. Defaults to 0.
+            unique (bool, optional): The deferred job will be unique. Defaults to True.
 
         Example:
             >>> await producer.run_job('function_name', args=[], kwargs={})
@@ -92,12 +94,12 @@ class Producer(DeferOperator):
                 defer_until,
                 args,
                 kwargs,
+                unique=unique,
             )
         else:
             logger.info(f"Scheduling job: {function_name}")
             job = await self._run_job(function_name, args, kwargs)
 
-        logger.info(f"Job created: {job}")
         return job
 
     async def _run_job(
@@ -120,13 +122,14 @@ class Producer(DeferOperator):
         defer_until: int,
         args: list[Any] = None,
         kwargs: dict[str, Any] = None,
+        unique: bool = True,
     ) -> Job:
         created_at = await self.get_current_timestamp_ms(self.redis)
 
         job = Job(
             args=args or [],
             kwargs=kwargs or {},
-            create_at=created_at,
+            create_at=created_at if unique else 0,
         )
         return await self.emit_deferred_job(function_name, defer_until, job)
 
@@ -141,3 +144,30 @@ class Producer(DeferOperator):
         defer_key = self.get_deferred_key(function_name)
         dead_key = self.get_dead_message_key(function_name)
         await self.redis.delete(stream_name, defer_key, dead_key)
+
+    async def remove_deferred_job(
+        self,
+        function_name: str,
+        args: list[Any] = None,
+        kwargs: dict[str, Any] = None,
+    ):
+        """
+        Only not unique job can be removed
+        """
+
+        job = Job(
+            args=args or [],
+            kwargs=kwargs or {},
+            create_at=0,
+        )
+        await self._remove_deferred_job(function_name, job)
+
+    async def deferred_job_exists(
+        self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
+    ) -> bool:
+        job = Job(
+            args=args or [],
+            kwargs=kwargs or {},
+            create_at=0,
+        )
+        return await self._deferred_job_exists(function_name, job)

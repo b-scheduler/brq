@@ -168,3 +168,11 @@ class DeferOperator(RedisOperator):
         defer_key = self.get_deferred_key(function_name)
         await self.redis.zadd(defer_key, {job.to_redis(): defer_until})
         return job
+
+    async def _deferred_job_exists(
+        self,
+        function_name: str,
+        job: Job,
+    ) -> bool:
+        defer_key = self.get_deferred_key(function_name)
+        return await self.redis.zscore(defer_key, job.to_redis())
