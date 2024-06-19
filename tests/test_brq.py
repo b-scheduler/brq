@@ -154,6 +154,7 @@ async def test_deferred_job(async_redis_client, capfd):
     await consumer.initialize()
     await browser.status()
     await consumer.run()
+    await browser.status()
     out, err = capfd.readouterr()
     assert "hello" not in out
     await asyncio.sleep(1.1)
