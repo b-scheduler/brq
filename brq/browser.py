@@ -104,11 +104,9 @@ class ScannerMixin(DeferOperator):
         try:
             full_response = await self.redis.xinfo_stream(stream_key, full=True)
         except IndexError:
-            # If no consumer group is found, xinfo_stream full will raise IndexError
             # https://github.com/redis/redis-py/pull/3282
-            # TODO: Remove when redis release > 5.0.6
             logger.warning(
-                "Due to redis-py bug, only brief info when no consumer group found. See https://github.com/redis/redis-py/pull/3282 for more details."
+                "Due to redis-py bug, only brief info when no consumer group found. Please upgrade redis>=5.0.7 to fix this."
             )
             full_response = await self.redis.xinfo_stream(stream_key)
 
