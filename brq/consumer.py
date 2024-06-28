@@ -26,7 +26,12 @@ class RunnableMixin:
         self._task = asyncio.create_task(self._start())
 
     async def _start(self):
-        await self.initialize()
+        try:
+            await self.initialize()
+        except Exception as e:
+            # Unrecoverable error
+            logger.exception(e)
+            exit(1)
         while not await event_wait(self._stop_event, 0.1):
             if self._stop_event.is_set():
                 break
