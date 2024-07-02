@@ -57,7 +57,9 @@ async def test_count_unacked_jobs(async_redis_client):
     await browser.status()
     await consumer.initialize()
     await browser.status()
-    await consumer.run()
+    loop = asyncio.get_event_loop()
+    loop.create_task(consumer.run())
+    await asyncio.sleep(0.1)
     assert await consumer.count_unacked_jobs("delay_job") == 1
     await browser.status()
     await asyncio.sleep(1.1)
