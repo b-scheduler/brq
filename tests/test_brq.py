@@ -180,8 +180,8 @@ async def test_not_unique_deferred_job(
 
     await browser.status()
     assert not await producer.deferred_job_exists("mock_consume", ["hello"])
-    await producer.run_job("mock_consume", ["hello"], defer_seconds=1, unique=False)
-    await producer.run_job("mock_consume", ["hello"], defer_seconds=1, unique=False)
+    await producer.run_job("mock_consume", ["hello"], defer_seconds=2, unique=False)
+    await producer.run_job("mock_consume", ["hello"], defer_seconds=2, unique=False)
     await browser.status()
     assert await producer.deferred_job_exists("mock_consume", ["hello"])
     assert len(await producer.get_deferred_jobs("mock_consume")) == 1
@@ -192,7 +192,8 @@ async def test_not_unique_deferred_job(
     await browser.status()
     out, err = capfd.readouterr()
     assert "hello" not in out
-    await asyncio.sleep(1.1)
+
+    await asyncio.sleep(2.1)
     await browser.status()
     await consumer.run()
     out, err = capfd.readouterr()
