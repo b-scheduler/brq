@@ -6,9 +6,9 @@ from typing import AsyncIterator, Optional, Union
 import redis.asyncio as redis
 from pydantic import BaseModel
 
-from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
+from brq.operator import BrqOperator
 
 
 def str_if_bytes(value: Union[str, bytes]) -> str:

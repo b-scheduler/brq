@@ -4,9 +4,9 @@ from uuid import uuid4
 
 import redis.asyncio as redis
 
-from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
+from brq.operator import BrqOperator
 
 
 class Producer(BrqOperator):

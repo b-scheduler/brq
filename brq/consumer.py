@@ -6,9 +6,9 @@ from typing import Any, Awaitable, Callable
 
 import redis.asyncio as redis
 
-from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
+from brq.operator import BrqOperator
 from brq.tools import event_wait
 
 CONSUMER_IDENTIFIER_ENV = "BRQ_CONSUMER_IDENTIFIER"
