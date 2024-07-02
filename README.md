@@ -27,10 +27,10 @@ Redis >= 6.2, tested with latest redis 6/7 docker image
 
 > See [examples](%22./examples%22) for running examples.
 
-- Defer job
-- Automatic retry job
-- Dead queue
-- Multiple consumers
+- Defer job and automatic retry error job
+- Dead queue for unprocessable job, you can process it later
+- Multiple consumers in one consumer group
+- No scheduler needed, consumer handles itself
 
 ## Echo job overview
 
