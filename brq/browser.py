@@ -6,7 +6,7 @@ from typing import AsyncIterator, Optional, Union
 import redis.asyncio as redis
 from pydantic import BaseModel
 
-from brq.defer_operator import DeferOperator
+from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
 
@@ -69,7 +69,7 @@ Function: {function_name}
     return template.strip() + "\n"
 
 
-class ScannerMixin(DeferOperator):
+class ScannerMixin(BrqOperator):
     def __init__(
         self,
         redis: redis.Redis | redis.RedisCluster,

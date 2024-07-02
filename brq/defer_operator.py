@@ -8,7 +8,7 @@ from brq.models import Job
 from brq.rds import RedisOperator
 
 
-class DeferOperator(RedisOperator):
+class BrqOperator(RedisOperator):
     def __init__(
         self,
         redis: redis.Redis | redis.RedisCluster,

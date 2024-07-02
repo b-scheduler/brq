@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable
 
 import redis.asyncio as redis
 
-from brq.defer_operator import DeferOperator
+from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
 from brq.tools import event_wait
@@ -64,7 +64,7 @@ class RunnableMixin:
         """
 
 
-class Consumer(DeferOperator, RunnableMixin):
+class Consumer(BrqOperator, RunnableMixin):
     """
     A consumer for redis stream.
 

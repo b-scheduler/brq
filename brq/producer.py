@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import redis.asyncio as redis
 
-from brq.defer_operator import DeferOperator
+from brq.defer_operator import BrqOperator
 from brq.log import logger
 from brq.models import Job
 
 
-class Producer(DeferOperator):
+class Producer(BrqOperator):
     """
     Producer to publish jobs to redis stream
 
@@ -25,7 +25,7 @@ class Producer(DeferOperator):
     * Call `count_unacked_jobs` to count unacked jobs.
     * Call `count_dead_messages` to count all dead messages.
 
-    Some higher level methods, see ``DeferOperator``
+    Some higher level methods, see ``BrqOperator``
 
     For inspect the whole brq, see ``browser.py``
 
