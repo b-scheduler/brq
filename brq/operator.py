@@ -149,7 +149,9 @@ class BrqOperator(RedisOperator):
         stream_name = self.get_stream_name(function_name)
         return await self.redis.xlen(stream_name)
 
-    async def count_unacked_jobs(self, function_name: str, group_name: str = "default-workers"):
+    async def count_unacked_jobs(
+        self, function_name: str, group_name: str = "default-workers"
+    ) -> int:
         """
         Count unacked jobs in group
 
@@ -158,7 +160,8 @@ class BrqOperator(RedisOperator):
             group_name (str, optional): group name. Defaults to "default-workers". Should be the same as Consumer's `group_name`
         """
         stream_name = self.get_stream_name(function_name)
-        return await self.redis.xpending(stream_name, group_name)
+        consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
+        return consumer_group_info[0]["pending"]
 
     async def count_dead_messages(self, function_name: str):
         dead_key = self.get_dead_message_key(function_name)
