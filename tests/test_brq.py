@@ -11,6 +11,11 @@ async def mock_consume(echo_str: str):
     print(echo_str)
 
 
+async def delay_job(echo_str: str, delay_seconds: int = 1):
+    await asyncio.sleep(delay_seconds)
+    print(echo_str)
+
+
 called = False
 
 
@@ -39,6 +44,24 @@ async def test_consume_function(async_redis_client, capfd, run_parallel):
 
     out, err = capfd.readouterr()
     assert "hello" in out
+    await consumer.cleanup()
+
+
+async def test_count_unacked_jobs(async_redis_client):
+    producer = Producer(async_redis_client)
+    consumer = Consumer(async_redis_client, delay_job)
+    browser = Browser(async_redis_client)
+
+    await browser.status()
+    await producer.run_job("delay_job", ["hello"])
+    await browser.status()
+    await consumer.initialize()
+    await browser.status()
+    await consumer.run()
+    assert await consumer.count_unacked_jobs("delay_job") == 1
+    await browser.status()
+    await asyncio.sleep(1.1)
+    assert await consumer.count_unacked_jobs("delay_job") == 0
     await consumer.cleanup()
 
 
