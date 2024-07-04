@@ -170,7 +170,7 @@ class BrqOperator(RedisOperator):
             consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
             return consumer_group_info[0]["pending"]
         except redis.ResponseError as e:
-            if e.args[0] == "NOGROUP No such consumer group":
+            if "NOGROUP No such consumer group" in e.args[0]:
                 return 0
             raise
 
