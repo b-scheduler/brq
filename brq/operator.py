@@ -166,8 +166,13 @@ class BrqOperator(RedisOperator):
         stream_name = self.get_stream_name(function_name)
         if not await self.redis.exists(stream_name):
             return 0
-        consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
-        return consumer_group_info[0]["pending"]
+        try:
+            consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
+            return consumer_group_info[0]["pending"]
+        except redis.ResponseError as e:
+            if e.args[0] == "NOGROUP No such consumer group":
+                return 0
+            raise
 
     async def count_dead_messages(self, function_name: str) -> int:
         dead_key = self.get_dead_message_key(function_name)
