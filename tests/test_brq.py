@@ -179,7 +179,7 @@ async def test_deferred_job(async_redis_client, capfd):
     browser = Browser(async_redis_client)
 
     await browser.status()
-    await producer.run_job("mock_consume", ["hello"], defer_seconds=1)
+    await producer.run_job("mock_consume", ["hello"], defer_seconds=2)
     await browser.status()
     assert await producer.get_deferred_jobs("mock_consume")
     await browser.status()
@@ -189,7 +189,7 @@ async def test_deferred_job(async_redis_client, capfd):
     await browser.status()
     out, err = capfd.readouterr()
     assert "hello" not in out
-    await asyncio.sleep(1.1)
+    await asyncio.sleep(2.1)
     await browser.status()
     await consumer.run()
     out, err = capfd.readouterr()
