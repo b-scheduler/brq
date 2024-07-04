@@ -136,17 +136,21 @@ class BrqOperator(RedisOperator):
             for element in await self.redis.zrangebyscore(dead_key, "-inf", "+inf", withscores=True)
         }
 
-    async def count_deferred_jobs(self, function_name: str):
+    async def count_deferred_jobs(self, function_name: str) -> int:
         defer_key = self.get_deferred_key(function_name)
+        if not await self.redis.exists(defer_key):
+            return 0
         return await self.redis.zcard(defer_key)
 
-    async def count_stream(self, function_name: str):
+    async def count_stream(self, function_name: str) -> int:
         """
         Count stream length
 
         If Consumer's `delete_message_after_process` if False, will include already processed messages
         """
         stream_name = self.get_stream_name(function_name)
+        if not await self.redis.exists(stream_name):
+            return 0
         return await self.redis.xlen(stream_name)
 
     async def count_unacked_jobs(
@@ -160,11 +164,15 @@ class BrqOperator(RedisOperator):
             group_name (str, optional): group name. Defaults to "default-workers". Should be the same as Consumer's `group_name`
         """
         stream_name = self.get_stream_name(function_name)
+        if not await self.redis.exists(stream_name):
+            return 0
         consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
         return consumer_group_info[0]["pending"]
 
-    async def count_dead_messages(self, function_name: str):
+    async def count_dead_messages(self, function_name: str) -> int:
         dead_key = self.get_dead_message_key(function_name)
+        if not await self.redis.exists(dead_key):
+            return 0
         return await self.redis.zcard(dead_key)
 
     async def emit_deferred_job(self, function_name: str, defer_until: int, job: Job):
