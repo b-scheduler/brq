@@ -51,6 +51,7 @@ async def test_count_unacked_jobs(async_redis_client):
     producer = Producer(async_redis_client)
     consumer = Consumer(async_redis_client, delay_job)
     browser = Browser(async_redis_client)
+    assert await consumer.count_unacked_jobs("delay_job") == 0
 
     await browser.status()
     await producer.run_job("delay_job", ["hello"])
@@ -146,6 +147,7 @@ async def test_process_dead_jobs(async_redis_client, capfd, enable_dead_queue):
         enable_dead_queue=enable_dead_queue,
     )
     browser = Browser(async_redis_client)
+    assert await producer.count_dead_messages("mock_consume_raise_exception") == 0
 
     await browser.status()
     await producer.run_job("mock_consume_raise_exception", ["hello"])
