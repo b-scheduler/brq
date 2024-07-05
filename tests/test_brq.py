@@ -52,18 +52,22 @@ async def test_count_unacked_jobs(async_redis_client):
     consumer = Consumer(async_redis_client, delay_job)
     browser = Browser(async_redis_client)
     assert await consumer.count_unacked_jobs("delay_job") == 0
-
+    assert await consumer.count_undelivered_jobs("delay_job") == 0
     await browser.status()
     await producer.run_job("delay_job", ["hello"])
+    assert await consumer.count_undelivered_jobs("delay_job") == 1
     await browser.status()
     await consumer.initialize()
+    assert await consumer.count_undelivered_jobs("delay_job") == 1
     await browser.status()
     loop = asyncio.get_event_loop()
     loop.create_task(consumer.run())
     await asyncio.sleep(0.1)
+    assert await consumer.count_undelivered_jobs("delay_job") == 0
     assert await consumer.count_unacked_jobs("delay_job") == 1
     await browser.status()
     await asyncio.sleep(1.1)
+    assert await consumer.count_undelivered_jobs("delay_job") == 0
     assert await consumer.count_unacked_jobs("delay_job") == 0
     await consumer.cleanup()
 

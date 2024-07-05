@@ -17,7 +17,7 @@
 
 ## Prerequisites
 
-Redis >= 6.2, tested with latest redis 6/7 docker image
+Redis >= 6.2, tested with latest redis 6/7 docker image. Recommended to use redis>=7, which includes more inspection features.
 
 ## Install
 

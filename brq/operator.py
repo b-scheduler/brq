@@ -153,6 +153,11 @@ class BrqOperator(RedisOperator):
             return 0
         return await self.redis.xlen(stream_name)
 
+    async def count_processing_jobs(
+        self, function_name: str, group_name: str = "default-workers"
+    ) -> int:
+        return await self.count_unacked_jobs(function_name, group_name)
+
     async def count_unacked_jobs(
         self, function_name: str, group_name: str = "default-workers"
     ) -> int:
@@ -173,6 +178,37 @@ class BrqOperator(RedisOperator):
             if "NOGROUP No such consumer group" in e.args[0]:
                 return 0
             raise
+
+    async def count_undelivered_jobs(
+        self, function_name: str, group_name: str = "default-workers"
+    ) -> int | None:
+        """
+        Only available when redis >= 7.0, None if can't be determined.
+        """
+        stream_name = self.get_stream_name(function_name)
+        if not await self.redis.exists(stream_name):
+            return 0
+
+        gropu_infos = await self.redis.xinfo_groups(stream_name)
+        for group_info in gropu_infos:
+            if group_info["name"] == group_name:
+                return group_info.get("lag", None)
+        return await self.count_stream(function_name)
+
+    async def count_unprocessed_jobs(self, function_name: str) -> int:
+        """
+        If redis >= 7.0, it will be the sum of `count_undelivered_jobs` and `count_unacked_jobs`
+        Otherwise, it only includes `count_unacked_jobs`
+        """
+        stream_name = self.get_stream_name(function_name)
+        if not await self.redis.exists(stream_name):
+            return 0
+
+        gropu_infos = await self.redis.xinfo_groups(stream_name)
+        for group_info in gropu_infos:
+            if group_info["name"] == "default-workers":
+                return group_info["pending"] + group_info.get("lag", 0)
+        return await self.count_stream(function_name)
 
     async def count_dead_messages(self, function_name: str) -> int:
         dead_key = self.get_dead_message_key(function_name)
