@@ -31,7 +31,12 @@ def docker_client():
 
 
 @pytest.fixture(scope="session")
-def redis_port(docker_client):
+def redis_version():
+    return os.getenv("REDIS_VERSION", "7")
+
+
+@pytest.fixture(scope="session")
+def redis_port(docker_client, redis_version):
     """
     Start a redis container and return the port
     """
@@ -39,7 +44,7 @@ def redis_port(docker_client):
     container = None
     try:
         container = docker_client.containers.run(
-            f"redis:{os.getenv('REDIS_VERSION', '7')}",
+            f"redis:{redis_version}",
             detach=True,
             ports={"6379": redis_port},
             remove=True,

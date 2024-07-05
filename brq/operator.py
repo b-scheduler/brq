@@ -173,7 +173,7 @@ class BrqOperator(RedisOperator):
             return 0
         try:
             consumer_group_info = await self.redis.xinfo_consumers(stream_name, group_name)
-            return consumer_group_info[0]["pending"]
+            return consumer_group_info[0]["pending"] if consumer_group_info else 0
         except redis.ResponseError as e:
             if "NOGROUP No such consumer group" in e.args[0]:
                 return 0
@@ -195,7 +195,9 @@ class BrqOperator(RedisOperator):
                 return group_info.get("lag", None)
         return await self.count_stream(function_name)
 
-    async def count_unprocessed_jobs(self, function_name: str) -> int:
+    async def count_unprocessed_jobs(
+        self, function_name: str, group_name: str = "default-workers"
+    ) -> int:
         """
         If redis >= 7.0, it will be the sum of `count_undelivered_jobs` and `count_unacked_jobs`
         Otherwise, it only includes `count_unacked_jobs`
@@ -206,7 +208,7 @@ class BrqOperator(RedisOperator):
 
         gropu_infos = await self.redis.xinfo_groups(stream_name)
         for group_info in gropu_infos:
-            if group_info["name"] == "default-workers":
+            if group_info["name"] == group_name:
                 return group_info["pending"] + group_info.get("lag", 0)
         return await self.count_stream(function_name)
 
