@@ -36,6 +36,8 @@ async def test_consume_function(async_redis_client, capfd, run_parallel):
     browser = Browser(async_redis_client)
     await browser.status()
     await producer.run_job("mock_consume", ["hello"])
+    jobs = [job async for job in producer.walk_jobs("mock_consume")]
+    assert len(jobs) == 1
     await browser.status()
     await consumer.initialize()
     await browser.status()
