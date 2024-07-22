@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, AsyncIterator
 
 import redis.asyncio as redis
 
@@ -230,3 +230,16 @@ class BrqOperator(RedisOperator):
     ) -> bool:
         defer_key = self.get_deferred_key(function_name)
         return await self.redis.zscore(defer_key, job.to_redis())
+
+    async def walk_jobs(self, function_name: str, count=None) -> AsyncIterator[Job]:
+        message_id = "0-0"
+        while True:
+            messages = await self.redis.xread(
+                {self.get_stream_name(function_name): message_id}, count=count
+            )
+            if not messages or not messages[0]:
+                break
+
+            messages = messages[0][1]
+            for message_id, body in messages:
+                yield Job.from_redis(body["payload"])
