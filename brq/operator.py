@@ -159,7 +159,7 @@ class BrqOperator(RedisOperator):
             return 0
 
         xinfo_stream = await self.redis.xinfo_stream(stream_name)
-        return xinfo_stream["entries-added"]
+        return xinfo_stream.get("entries-added")
 
     async def count_processing_jobs(
         self, function_name: str, group_name: str = "default-workers"
@@ -229,11 +229,11 @@ class BrqOperator(RedisOperator):
                     """
                     entries_read = group_info.get("entries-read")
                     if entries_read is None:
-                        """
-                        Redis < 7.0, just return pending
-                        """
                         return pending
-                    return await self.count_stream_added(function_name) - entries_read - pending
+                    added_count = await self.count_stream_added(function_name)
+                    if added_count is None:
+                        return pending
+                    return added_count - entries_read - pending
                 return lag + pending
         return await self.count_stream(function_name)
 
