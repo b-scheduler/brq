@@ -153,6 +153,14 @@ class BrqOperator(RedisOperator):
             return 0
         return await self.redis.xlen(stream_name)
 
+    async def count_stream_added(self, function_name: str) -> int:
+        stream_name = self.get_stream_name(function_name)
+        if not await self.redis.exists(stream_name):
+            return 0
+
+        xinfo_stream = await self.redis.xinfo_stream(stream_name)
+        return xinfo_stream["entries-added"]
+
     async def count_processing_jobs(
         self, function_name: str, group_name: str = "default-workers"
     ) -> int:
@@ -209,8 +217,23 @@ class BrqOperator(RedisOperator):
         gropu_infos = await self.redis.xinfo_groups(stream_name)
         for group_info in gropu_infos:
             if group_info["name"] == group_name:
-                lag = group_info.get("lag") or 0
                 pending = group_info.get("pending") or 0
+                lag = group_info.get("lag")
+                if lag is None:
+                    logger.warning(
+                        f"Lag is not available for group `{group_name}` in stream `{stream_name}`. Try calculate it."
+                    )
+                    """
+                    1. Is empty
+                    2. Stream last-generated-id were deleted, the lag possibly is length of stream
+                    """
+                    entries_read = group_info.get("entries-read")
+                    if entries_read is None:
+                        """
+                        Redis < 7.0, just return pending
+                        """
+                        return pending
+                    return await self.count_stream_added(function_name) - entries_read - pending
                 return lag + pending
         return await self.count_stream(function_name)
 
