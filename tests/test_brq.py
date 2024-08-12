@@ -62,6 +62,7 @@ async def test_count_jobs(async_redis_client, redis_version):
     assert await consumer.count_unacked_jobs("delay_job") == 0
     assert await consumer.count_undelivered_jobs("delay_job") == 1
     assert await consumer.count_unprocessed_jobs("delay_job") == 1
+    assert await consumer.count_stream_added("delay_job") == 1
     await browser.status()
     await consumer.initialize()
     assert await consumer.count_unacked_jobs("delay_job") == 0
