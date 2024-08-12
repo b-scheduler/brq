@@ -209,7 +209,9 @@ class BrqOperator(RedisOperator):
         gropu_infos = await self.redis.xinfo_groups(stream_name)
         for group_info in gropu_infos:
             if group_info["name"] == group_name:
-                return group_info["pending"] + group_info.get("lag", 0)
+                lag = group_info.get("lag") or 0
+                pending = group_info.get("pending") or 0
+                return lag + pending
         return await self.count_stream(function_name)
 
     async def count_dead_messages(self, function_name: str) -> int:
