@@ -68,9 +68,11 @@ async def test_count_jobs(async_redis_client, redis_version):
     if redis_version == "7":
         assert await consumer.count_undelivered_jobs("delay_job") == 1
         assert await consumer.count_unprocessed_jobs("delay_job") == 1
+        assert await consumer.count_stream_added("delay_job") == 1
     else:
         assert await consumer.count_undelivered_jobs("delay_job") == None
         assert await consumer.count_unprocessed_jobs("delay_job") == 0
+        assert await consumer.count_stream_added("delay_job") == None
     await browser.status()
     loop = asyncio.get_event_loop()
     loop.create_task(consumer.run())
