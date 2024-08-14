@@ -243,7 +243,7 @@ class BrqOperator(RedisOperator):
             return 0
         return await self.redis.zcard(dead_key)
 
-    async def remove_dead_messages(self, function_name: str, job: Job):
+    async def remove_dead_message(self, function_name: str, job: Job):
         dead_key = self.get_dead_message_key(function_name)
         await self.redis.zrem(dead_key, job.to_redis())
 
