@@ -186,16 +186,20 @@ class Consumer(BrqOperator, RunnableMixin):
         else:
             await self._pool_job()
 
-    async def process_dead_jobs(self, raise_exception: bool = False):
+    async def process_dead_jobs(self, raise_exception: bool = False) -> list[Job]:
+        unprocessed_jobs = []
         for job in (Job.from_redis(j) for j in await self.redis.zrange(self.dead_key, 0, -1)):
             try:
                 await self.awaitable_function(*job.args, **job.kwargs)
             except Exception as e:
                 logger.exception(e)
+                unprocessed_jobs.append(job)
                 if raise_exception:
                     raise e
             else:
                 await self.redis.zrem(self.dead_key, job.to_redis())
+
+        return unprocessed_jobs
 
     async def _move_expired_jobs(self):
         while True:
