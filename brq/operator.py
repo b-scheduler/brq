@@ -69,7 +69,7 @@ class BrqOperator(RedisOperator):
 
     async def get_defer_timestamp_ms(
         self,
-        defer_until: datetime = None,
+        defer_until: datetime | None = None,
         defer_hours: int = 0,
         defer_minutes: int = 0,
         defer_seconds: int = 0,

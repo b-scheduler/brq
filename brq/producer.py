@@ -49,9 +49,9 @@ class Producer(BrqOperator):
     async def run_job(
         self,
         function_name: str,
-        args: list[Any] = None,
-        kwargs: dict[str, Any] = None,
-        defer_until: datetime = None,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
+        defer_until: datetime | None = None,
         defer_hours: int = 0,
         defer_minutes: int = 0,
         defer_seconds: int = 0,
@@ -107,7 +107,10 @@ class Producer(BrqOperator):
         return job
 
     async def _run_job(
-        self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
+        self,
+        function_name: str,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
     ) -> Job:
         stream_name = self.get_stream_name(function_name)
         created_at = await self.get_current_timestamp_ms(self.redis)
@@ -124,8 +127,8 @@ class Producer(BrqOperator):
         self,
         function_name: str,
         defer_until: int,
-        args: list[Any] = None,
-        kwargs: dict[str, Any] = None,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
         unique: bool = True,
     ) -> Job:
         if unique:
@@ -157,8 +160,8 @@ class Producer(BrqOperator):
     async def remove_deferred_job(
         self,
         function_name: str,
-        args: list[Any] = None,
-        kwargs: dict[str, Any] = None,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
     ):
         """
         Only not unique job can be removed
@@ -172,7 +175,10 @@ class Producer(BrqOperator):
         await self._remove_deferred_job(function_name, job)
 
     async def deferred_job_exists(
-        self, function_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None
+        self,
+        function_name: str,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
     ) -> bool:
         """
         Only not unique job can be detected
