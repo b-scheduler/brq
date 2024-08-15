@@ -99,7 +99,7 @@ class Consumer(BrqOperator, RunnableMixin):
         self,
         redis: redis.Redis | redis.RedisCluster,
         awaitable_function: Callable[[Any], Awaitable[Any]],
-        register_function_name: str = None,
+        register_function_name: str | None = None,
         group_name="default-workers",
         consumer_identifier: str = os.getenv(CONSUMER_IDENTIFIER_ENV, uuid.uuid4().hex),
         count_per_fetch: int = 1,
