@@ -275,7 +275,7 @@ class Consumer(BrqOperator, RunnableMixin):
             consumername=self.consumer_identifier,
             streams={self.stream_name: ">"},
             count=self.count_per_fetch,
-            block=self.block_time,
+            block=int(self.block_time * 1000),
         )
         if not poll_result:
             return
@@ -299,7 +299,7 @@ class Consumer(BrqOperator, RunnableMixin):
             consumername=self.consumer_identifier,
             streams={self.stream_name: ">"},
             count=self.count_per_fetch,
-            block=self.block_time,
+            block=int(self.block_time * 1000),
         )
         if not pool_result:
             return
