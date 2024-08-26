@@ -32,7 +32,7 @@ class RunnableMixin:
             # Unrecoverable error
             logger.exception(e)
             exit(1)
-        while not await event_wait(self._stop_event, 0.1):
+        while not await event_wait(self._stop_event, 1 / 1000000):
             if self._stop_event.is_set():
                 break
             try:
