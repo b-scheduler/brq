@@ -173,6 +173,8 @@ class Consumer(BrqOperator, RunnableMixin):
         await self.redis.set(self.retry_cooldown_key, "1", ex=self.retry_cooldown_time)
 
     async def _consume(self):
+        if self._stop_event.is_set():
+            return
         try:
             if not await self._is_retry_cooldown() and await self._acquire_retry_lock():
                 await self._process_unacked_job()
@@ -181,6 +183,8 @@ class Consumer(BrqOperator, RunnableMixin):
         finally:
             await self._release_retry_lock()
 
+        if self._stop_event.is_set():
+            return
         if self.run_parallel:
             await self._pool_job_prallel()
         else:
