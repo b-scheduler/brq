@@ -97,12 +97,19 @@ class BrqOperator(RedisOperator):
 
         return defer_until * 1000
 
-    async def get_deferred_jobs(self, function_name: str) -> dict[datetime:Job]:
+    async def get_deferred_jobs(
+        self,
+        function_name: str,
+        start_timestamp: str | int = "-inf",
+        end_timestamp: str | int = "+inf",
+    ) -> dict[datetime:Job]:
         """
         Get all deferred jobs
 
         Args:
             function_name (str): function name
+            start_timestamp (str | int, optional): start timestamp in millisecond. Defaults to "-inf".
+            end_timestamp (str | int, optional): end timestamp in millisecond. Defaults to "+inf".
 
         Returns:
             dict[datetime:Job]: deferred jobs,
@@ -113,7 +120,7 @@ class BrqOperator(RedisOperator):
         return {
             datetime.fromtimestamp(float(element[1]) / 1000): Job.from_redis(element[0])
             for element in await self.redis.zrangebyscore(
-                defer_key, "-inf", "+inf", withscores=True
+                defer_key, start_timestamp, end_timestamp, withscores=True
             )
         }
 
