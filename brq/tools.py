@@ -1,10 +1,14 @@
 import asyncio
 import contextlib
+import functools
+import inspect
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, AsyncGenerator
 
+import anyio
 import redis.asyncio as redis
+from anyio import to_thread
 
 from brq.log import logger
 
@@ -75,3 +79,17 @@ async def get_redis_client(
         yield redis_client
     finally:
         await redis_client.aclose()
+
+
+def ensure_awaitable(func, limiter=None):
+    if inspect.iscoroutinefunction(func):
+        return func
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        nonlocal func
+        if kwargs:
+            func = functools.partial(func, **kwargs)
+        return await anyio.to_thread.run_sync(func, *args, limiter=limiter)
+
+    return wrapper
