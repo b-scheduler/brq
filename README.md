@@ -34,7 +34,7 @@ Redis >= 6.2, tested with latest redis 6/7 docker image. Recommended to use redi
 
 ## Configuration
 
-If using `BrqConfig`, you can use a `.env` file and environment variables to configure brq. The prefix of environment variables is `BRQ_`.
+If using `BrqConfig`(for example, `@task`), you can use a `.env` file and environment variables to configure brq. The prefix of environment variables is `BRQ_`.
 
 > For example, `BRQ_REDIS_PORT=6379 python consumer.py` for specifying redis port.
 
