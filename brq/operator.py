@@ -34,8 +34,7 @@ class BrqOperator(RedisOperator):
             redis.call('ZREM', zset_key, element)
             redis.call('XADD', stream_key, 'MAXLEN', maxlen, '*', 'payload', element)
         end
-
-        return elements
+        return #elements
         """
         defer_key = self.get_deferred_key(function_name)
         stream_name = self.get_stream_name(function_name)
@@ -49,7 +48,7 @@ class BrqOperator(RedisOperator):
             maxlen,
         )
         if elements:
-            logger.debug(f"Enqueued deferred jobs: {elements}")
+            logger.debug(f"Enqueued {elements} deferred jobs")
 
     async def _remove_deferred_job(
         self,
