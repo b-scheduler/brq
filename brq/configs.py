@@ -1,10 +1,8 @@
-import os
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
 import redis.asyncio as redis
-from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from brq.tools import get_redis_client, get_redis_url
