@@ -32,6 +32,14 @@ Redis >= 6.2, tested with latest redis 6/7 docker image. Recommended to use redi
 - Multiple consumers in one consumer group
 - No scheduler needed, consumer handles itself
 
+## Configuration
+
+If using `BrqConfig`, you can use a `.env` file and environment variables to configure brq. The prefix of environment variables is `BRQ_`.
+
+> For example, `BRQ_REDIS_PORT=6379 python consumer.py` for specifying redis port.
+
+See [configs](./brq/configs.py) for more details.
+
 ## Echo job overview
 
 ### Producer
@@ -40,21 +48,18 @@ Redis >= 6.2, tested with latest redis 6/7 docker image. Recommended to use redi
 import os
 
 from brq.producer import Producer
-from brq.tools import get_redis_client, get_redis_url
+from brq.configs import BrqConfig
 
 
 async def main():
-    redis_url = get_redis_url(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
-        db=int(os.getenv("REDIS_DB", 0)),
-        cluster=bool(os.getenv("REDIS_CLUSTER", "false") in ["True", "true", "1"]),
-        tls=bool(os.getenv("REDIS_TLS", "false") in ["True", "true", "1"]),
-        username=os.getenv("REDIS_USERNAME", ""),
-        password=os.getenv("REDIS_PASSWORD", ""),
-    )
-    async with get_redis_client(redis_url) as async_redis_client:
-        await Producer(async_redis_client).run_job("echo", ["hello"])
+    config = BrqConfig()
+    async with config.open_redis_client() as async_redis_client:
+        await Producer(
+            async_redis_client,
+            redis_prefix=config.redis_key_prefix,
+            redis_seperator=config.redis_key_seperator,
+            max_message_len=config.producer_max_message_length,
+        ).run_job("echo", ["hello"])
 
 
 if __name__ == "__main__":
@@ -64,6 +69,27 @@ if __name__ == "__main__":
 ```
 
 ### Consumer
+
+The only thing you need is `@task`, and the target function can be `sync` or `async` and `sync` function will be converted to `async` function and run in a thread automatically.
+
+```python
+from brq import task
+
+
+@task
+def echo(message):
+    print(f"Received message: {message}")
+
+
+if __name__ == "__main__":
+    # Run the task once, for local debug
+    # echo("hello")
+
+    # Run as a daemon
+    echo.serve()
+```
+
+This is the same as the following, the classic way...But more flexible.
 
 ```python
 import os

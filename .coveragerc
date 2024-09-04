@@ -4,3 +4,4 @@ omit =
     brq/tools.py
     brq/cli.py
     brq/envs.py
+    brq/daemon.py
