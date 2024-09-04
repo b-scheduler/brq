@@ -7,7 +7,7 @@ name = "brq"
 description = "brq"
 keywords = ["brq"]
 requires-python = ">=3.10"
-dependencies = ["pydantic", "redis>=5.0", "loguru", "click"]
+dependencies = ["pydantic>=2, <3", "redis>=5.0, <6", "loguru", "click"]
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-browser = ["fastapi", "uvicorn[standard]", "pydantic>=2"]
+browser = ["fastapi", "uvicorn[standard]"]
 test = ["pytest", "docker", "pytest-asyncio", "pytest-cov", "brq[browser]"]
 docs = ["Sphinx", "pydata-sphinx-theme", "sphinx-click", "autodoc_pydantic"]
 
