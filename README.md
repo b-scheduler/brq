@@ -6,12 +6,9 @@
 ![](https://img.shields.io/pypi/pyversions/brq)
 [![codecov](https://codecov.io/gh/Wh1isper/brq/graph/badge.svg?token=84A7BQZIS2)](https://codecov.io/gh/Wh1isper/brq)
 
-> This project is inspired by [arq](https://github.com/samuelcolvin/arq).
-> Not intentionally dividing the community, I desperately needed a redis queue based on redis stream for work reasons and just decided to open source it.
->
-> You should also consider [arq](https://github.com/samuelcolvin/arq) as more of a library: https://github.com/samuelcolvin/arq/issues/437
-
 # brq
+
+`brq` is a lightweight python library for job queue based on the redis stream, with no central server and self-organized by `Consumer`.
 
 ![Architecture.png](./assets/Architecture.png)
 

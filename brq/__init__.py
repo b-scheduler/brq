@@ -1,7 +1,7 @@
 """Top-level package for brq."""
 
 __author__ = "wh1isper"
-__email__ = "9573586@qq.com"
+__email__ = "jizhongsheng957@gmail.com"
 __version__ = "0.4.1.dev0"
 
 

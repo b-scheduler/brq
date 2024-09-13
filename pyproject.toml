@@ -30,7 +30,7 @@ docs = ["Sphinx", "pydata-sphinx-theme", "sphinx-click", "autodoc_pydantic"]
 
 [[project.authors]]
 name = "wh1isper"
-email = "9573586@qq.com"
+email = "jizhongsheng957@gmail.com"
 
 [project.readme]
 file = "README.md"
@@ -43,7 +43,7 @@ brq = "brq.cli:cli"
 text = "BSD 3-Clause License"
 
 [project.urls]
-Source = "https://github.com/wh1isper/brq"
+Source = "https://github.com/b-scheduler/brq"
 
 [tool.check-manifest]
 ignore = [".*"]
