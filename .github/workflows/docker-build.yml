@@ -22,8 +22,14 @@ jobs:
             - name: Login to DockerHub
               uses: docker/login-action@v3
               with:
-                  username: wh1isper
+                  username: ${{ vars.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: b-scheduler
+                  password: ${{ secrets.PAT }}
             - name: Build and push release
               id: docker_build_release_matrix
               uses: docker/build-push-action@v5
@@ -34,4 +40,6 @@ jobs:
                   cache-to: type=gha,mode=max
                   file: ./docker/Dockerfile
                   push: true
-                  tags: wh1isper/brq:dev
+                  tags: |
+                      ${{ vars.DOCKERHUB_USERNAME }}/brq:dev
+                      ghcr.io/b-scheduler/brq:dev
