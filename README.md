@@ -4,7 +4,7 @@
 ![](https://img.shields.io/pypi/dm/brq)
 ![](https://img.shields.io/github/last-commit/wh1isper/brq)
 ![](https://img.shields.io/pypi/pyversions/brq)
-[![codecov](https://codecov.io/gh/Wh1isper/brq/graph/badge.svg?token=84A7BQZIS2)](https://codecov.io/gh/Wh1isper/brq)
+[![codecov](https://codecov.io/github/b-scheduler/brq/graph/badge.svg?token=84A7BQZIS2)](https://codecov.io/github/b-scheduler/brq)
 
 # brq
 
