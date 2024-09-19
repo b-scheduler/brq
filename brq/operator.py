@@ -72,7 +72,7 @@ class BrqOperator(RedisOperator):
         defer_hours: int = 0,
         defer_minutes: int = 0,
         defer_seconds: int = 0,
-    ):
+    ) -> int | None:
         if not any(
             [
                 defer_until,
