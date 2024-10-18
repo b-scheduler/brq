@@ -14,6 +14,10 @@ from brq.tools import event_wait
 CONSUMER_IDENTIFIER_ENV = "BRQ_CONSUMER_IDENTIFIER"
 
 
+class CannotProcessError(RuntimeError):
+    pass
+
+
 class RunnableMixin:
     def __init__(self):
         self._stop_event = asyncio.Event()
@@ -116,12 +120,16 @@ class Consumer(BrqOperator, RunnableMixin):
         max_message_len: int = 1000,
         delete_message_after_process: bool = False,
         run_parallel: bool = False,
+        awaitable_function_callback: (
+            Callable[[Job, Exception | Any, "Consumer"], Awaitable[Any]] | None
+        ) = None,
     ):
         super().__init__(redis, redis_prefix, redis_seperator)
         self._stop_event = asyncio.Event()
         self._task: None | asyncio.Task = None
 
         self.awaitable_function = awaitable_function
+        self.awaitable_function_callback = awaitable_function_callback
         self.register_function_name = register_function_name or awaitable_function.__name__
         self.group_name = group_name
         self.consumer_identifier = consumer_identifier
@@ -165,6 +173,15 @@ class Consumer(BrqOperator, RunnableMixin):
     @property
     def dead_key(self) -> str:
         return self.get_dead_message_key(self.register_function_name)
+
+    async def callback(self, job: Job, exception_or_result: Exception | Any):
+        if not self.awaitable_function_callback:
+            return
+        try:
+            await self.awaitable_function_callback(job, exception_or_result, consumer=self)
+        except Exception as e:
+            logger.warning(f"Callback error: {e}")
+            logger.exception(e)
 
     async def _is_retry_cooldown(self) -> bool:
         return await self.redis.exists(self.retry_cooldown_key)
@@ -234,6 +251,7 @@ class Consumer(BrqOperator, RunnableMixin):
                     logger.info(f"Put expired job {job} to dead queue")
                 await self.redis.xdel(self.stream_name, message_id)
                 logger.debug(f"{job} expired")
+                await self.callback(job, CannotProcessError("Expired"))
 
     async def _process_unacked_job(self):
         if not self.enable_reprocess_timeout_job:
@@ -263,15 +281,17 @@ class Consumer(BrqOperator, RunnableMixin):
                     continue
                 job = Job.from_message(serialized_job)
                 try:
-                    await self.awaitable_function(*job.args, **job.kwargs)
+                    r = await self.awaitable_function(*job.args, **job.kwargs)
                 except Exception as e:
                     logger.exception(e)
+                    await self.callback(job, e)
                 else:
                     logger.info(f"Retry {job} successfully")
                     await self.redis.xack(self.stream_name, self.group_name, message_id)
 
                     if self.delete_message_after_process:
                         await self.redis.xdel(self.stream_name, message_id)
+                    await self.callback(job, r)
 
     async def _pool_job(self):
         poll_result = await self.redis.xreadgroup(
@@ -288,14 +308,16 @@ class Consumer(BrqOperator, RunnableMixin):
         for message_id, serialized_job in messages:
             job = Job.from_message(serialized_job)
             try:
-                await self.awaitable_function(*job.args, **job.kwargs)
+                r = await self.awaitable_function(*job.args, **job.kwargs)
             except Exception as e:
                 logger.exception(e)
+                await self.callback(job, e)
             else:
                 await self.redis.xack(self.stream_name, self.group_name, message_id)
 
                 if self.delete_message_after_process:
                     await self.redis.xdel(self.stream_name, message_id)
+                await self.callback(job, r)
 
     async def _pool_job_prallel(self):
         pool_result = await self.redis.xreadgroup(
@@ -325,11 +347,13 @@ class Consumer(BrqOperator, RunnableMixin):
         for message_id, result in zip(jobs, results):
             if isinstance(result, Exception):
                 logger.exception(result)
+                await self.callback(jobs[message_id], result)
                 continue
 
             await self.redis.xack(self.stream_name, self.group_name, message_id)
             if self.delete_message_after_process:
                 await self.redis.xdel(self.stream_name, message_id)
+            await self.callback(jobs[message_id], result)
 
     async def _acquire_retry_lock(self) -> bool:
         return await self.redis.get(

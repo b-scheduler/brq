@@ -17,8 +17,10 @@ class BrqTaskWrapper:
         func: Callable | Awaitable,
         config: BrqConfig,
         register_function_name: str | None = None,
+        callback_func: Callable | Awaitable | None = None,
     ):
         self._func = func
+        self._callback_func = callback_func
         self.config = config
         self.register_function_name = register_function_name or func.__name__
 
@@ -33,6 +35,14 @@ class BrqTaskWrapper:
             awaitable_function = ensure_awaitable(
                 self._func,
                 limiter=CapacityLimiter(total_tokens=self.config.daemon_concurrency),
+            )
+            callback_func = (
+                ensure_awaitable(
+                    self._callback_func,
+                    limiter=CapacityLimiter(total_tokens=self.config.daemon_concurrency),
+                )
+                if self._callback_func
+                else None
             )
             consumer_builder = partial(
                 Consumer,
@@ -55,6 +65,7 @@ class BrqTaskWrapper:
                 max_message_len=self.config.consumer_max_message_len,
                 delete_message_after_process=self.config.consumer_delete_message_after_process,
                 run_parallel=self.config.consumer_run_parallel,
+                awaitable_function_callback=callback_func,
             )
             daemon = Daemon(*[consumer_builder() for _ in range(self.config.daemon_concurrency)])
             await daemon.run_forever()
@@ -91,6 +102,7 @@ def task(
     max_message_len: int | None = None,
     delete_message_after_process: bool | None = None,
     run_parallel: bool | None = None,
+    callback_func: Callable | Awaitable | None = None,
     # Daemon
     daemon_concurrency: int | None = None,
 ):
@@ -99,9 +111,10 @@ def task(
         func,
         config: BrqConfig | None = None,
         register_function_name: str | None = None,
+        callback_func: Callable | Awaitable | None = None,
     ):
 
-        return BrqTaskWrapper(func, config, register_function_name)
+        return BrqTaskWrapper(func, config, register_function_name, callback_func)
 
     kwargs = {
         k: v
@@ -153,6 +166,12 @@ def task(
             _wrapper,
             config=config,
             register_function_name=register_function_name,
+            callback_func=callback_func,
         )
     else:
-        return _wrapper(_func, config=config, register_function_name=register_function_name)
+        return _wrapper(
+            _func,
+            config=config,
+            register_function_name=register_function_name,
+            callback_func=callback_func,
+        )
