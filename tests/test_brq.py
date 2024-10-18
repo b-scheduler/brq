@@ -33,6 +33,16 @@ async def mock_always_consume_raise_exception(echo_str: str):
     raise Exception("raise exception")
 
 
+callback_called = False
+
+
+async def mock_callback(job, exception_or_result, consumer):
+    global callback_called
+    if callback_called:
+        raise RuntimeError("Callback already called. Please reset it.")
+    callback_called = True
+
+
 @pytest.mark.parametrize("run_parallel", [False, True])
 async def test_consume_function(async_redis_client, capfd, run_parallel):
     producer = Producer(async_redis_client)
@@ -50,6 +60,37 @@ async def test_consume_function(async_redis_client, capfd, run_parallel):
 
     out, err = capfd.readouterr()
     assert "hello" in out
+    await consumer.cleanup()
+
+
+@pytest.mark.parametrize("run_parallel", [False, True])
+async def test_consume_with_callback_function(async_redis_client, capfd, run_parallel):
+    global callback_called
+    callback_called = False
+    assert not callback_called
+
+    producer = Producer(async_redis_client)
+    consumer = Consumer(
+        async_redis_client,
+        mock_consume,
+        run_parallel=run_parallel,
+        awaitable_function_callback=mock_callback,
+    )
+    browser = Browser(async_redis_client)
+    await browser.status()
+    await producer.run_job("mock_consume", ["hello"])
+    jobs = [job async for job in producer.walk_jobs("mock_consume")]
+    assert len(jobs) == 1
+    await browser.status()
+    await consumer.initialize()
+    await browser.status()
+    await consumer.run()
+    await browser.status()
+
+    out, err = capfd.readouterr()
+
+    assert "hello" in out
+    assert callback_called
     await consumer.cleanup()
 
 
