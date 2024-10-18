@@ -2,7 +2,7 @@
 
 __author__ = "wh1isper"
 __email__ = "jizhongsheng957@gmail.com"
-__version__ = "0.4.2.dev0"
+__version__ = "0.5.1.dev0"
 
 
 from .configs import BrqConfig
