@@ -97,6 +97,7 @@ class Consumer(BrqOperator, RunnableMixin):
         max_message_len(int, default=1000): The maximum length of a message. Follow redis stream `maxlen`.
         delete_message_after_process(bool, default=False): Whether to delete message after process. If many consumer groups are used, this should be set to False.
         run_parallel(bool, default=False): Whether to run in parallel.
+        awaitable_function_callback(Callable[[Job, Exception | Any, "Consumer"], Awaitable[Any]] | None, default=None): The callback function for awaitable_function.
     """
 
     def __init__(
@@ -124,6 +125,7 @@ class Consumer(BrqOperator, RunnableMixin):
             Callable[[Job, Exception | Any, "Consumer"], Awaitable[Any]] | None
         ) = None,
     ):
+
         super().__init__(redis, redis_prefix, redis_seperator)
         self._stop_event = asyncio.Event()
         self._task: None | asyncio.Task = None
@@ -178,7 +180,7 @@ class Consumer(BrqOperator, RunnableMixin):
         if not self.awaitable_function_callback:
             return
         try:
-            await self.awaitable_function_callback(job, exception_or_result, consumer=self)
+            await self.awaitable_function_callback(job, exception_or_result, self)
         except Exception as e:
             logger.warning(f"Callback error: {e}")
             logger.exception(e)
