@@ -22,12 +22,13 @@ Redis >= 6.2, tested with latest redis 6/7 docker image. Recommended to use redi
 
 ## Feature
 
-> See [examples](%22./examples%22) for running examples.
+> See [examples](./examples) for running examples.
 
 - Defer job and automatic retry error job
 - Dead queue for unprocessable job, you can process it later
 - Multiple consumers in one consumer group
 - No scheduler needed, consumer handles itself
+- Using callback function to process job result or exception
 
 ## Configuration
 
